@@ -17,11 +17,13 @@
     <!-- FIREBASE CLOUD DATABASE SDK (CDN) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Firebase Configuration Setup
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hgn-pgri-lampungbarat-2026';
+        const appId = 'hgn-pgri-lampungbarat-2026'; // Namespace dipertahankan agar data lama tetap berada di jalur yang sama.
+        const ADMIN_UID = 'qMepfpYhfqPLTE47eysdUlwoWbj2';
+        window.HGN_ADMIN_UID = ADMIN_UID;
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyDI5Unez4yorulVwwYP_gkm15P_sbu6w0Q",
             authDomain: "hgn-lambar-2026.firebaseapp.com",
@@ -50,24 +52,27 @@
         window.fbDeleteDoc = deleteDoc;
         window.fbOnSnapshot = onSnapshot;
         window.fbCollection = collection;
+        window.fbGetDoc = getDoc;
+        window.fbQuery = query;
+        window.fbWhere = where;
+        window.fbDeleteField = deleteField;
+        window.fbSendPasswordResetEmail = sendPasswordResetEmail;
+        window.fbSignInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.fbCreateUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.fbSignOut = signOut;
 
-        // Auto Authenticate Session
-        const initCloudAuth = async () => {
-            if (!auth) return;
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                console.log("Cloud Auth initialized for real-time multi-device sync.");
-                if (window.onCloudReady) window.onCloudReady();
-            } catch (err) {
-                console.warn("Cloud Auth Notice:", err);
-                if (window.onCloudReady) window.onCloudReady();
-            }
-        };
-        initCloudAuth();
+        // Public content uses read-only Firestore rules. Admin/participant access must
+        // authenticate with Firebase Email/Password; no anonymous admin session is created.
+        onAuthStateChanged(auth, (user) => {
+            window.__hgnAuthUser = user || null;
+            window.__hgnCloudAuthReady = true;
+            if (typeof window.onCloudAuthChanged === 'function') window.onCloudAuthChanged(user || null);
+            if (typeof window.onCloudReady === 'function') window.onCloudReady();
+        }, (err) => {
+            console.error('Firebase auth state error:', err);
+            window.__hgnCloudAuthReady = true;
+            if (typeof window.onCloudReady === 'function') window.onCloudReady();
+        });
     </script>
 
     <script>
@@ -1135,12 +1140,12 @@ https://hgn.lampungbarat.go.id</textarea>
     <div id="admin-reset-pass-modal" class="fixed inset-0 z-50 bg-navy-950/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
         <div class="bg-navy-900 border border-gold-500/40 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-white">
             <h3 class="text-lg font-bold text-gold-400 mb-1">Reset Password Peserta</h3>
-            <p class="text-xs text-slate-300 mb-4">Reset password login untuk <strong id="reset-target-user-name" class="text-white">Peserta</strong>.</p>
+            <p class="text-xs text-slate-300 mb-4">Kirim tautan reset password ke email akun <strong id="reset-target-user-name" class="text-white">Peserta</strong>.</p>
             <form onsubmit="handleConfirmResetPassword(event)" class="space-y-4">
                 <input type="hidden" id="reset-target-user-id">
                 <div>
-                    <label class="block text-xs font-bold mb-1">Password Baru Peserta *</label>
-                    <input type="text" id="reset-new-password" required placeholder="Password baru" class="w-full bg-navy-950 border border-gold-500/30 text-white text-xs rounded-xl p-2.5">
+                    <label class="block text-xs font-bold mb-1">Reset Password Peserta</label>
+                    <input type="text" id="reset-new-password" placeholder="Password dikelola melalui tautan email" class="w-full bg-navy-950 border border-gold-500/30 text-white text-xs rounded-xl p-2.5">
                 </div>
                 <div class="flex gap-2">
                     <button type="submit" class="flex-1 py-2.5 rounded-xl bg-gold-gradient text-navy-950 font-bold text-xs">Simpan Password</button>
@@ -1157,11 +1162,14 @@ https://hgn.lampungbarat.go.id</textarea>
                 <i class="fa-solid fa-user-shield"></i>
             </div>
             <h3 class="text-xl font-bold text-white mb-1">Otentikasi Administrator</h3>
-            <p class="text-xs text-slate-400 mb-4">Masukkan kata sandi Admin untuk mengaktifkan Mode Admin.</p>
+            <p class="text-xs text-slate-400 mb-4">Masuk menggunakan email dan kata sandi akun admin Firebase.</p>
 
             <form onsubmit="handleAdminLogin(event)" class="space-y-4">
                 <div>
-                    <input type="password" id="admin-pass-input" placeholder="Masukkan Kata Sandi Admin" required class="w-full bg-navy-950 border border-gold-500/30 text-white text-xs rounded-xl p-3 text-center focus:outline-none focus:border-gold-500">
+                    <input type="email" id="admin-email-input" placeholder="Email admin Firebase" required autocomplete="username" class="w-full bg-navy-950 border border-gold-500/30 text-white text-xs rounded-xl p-3 text-center focus:outline-none focus:border-gold-500">
+                </div>
+                <div>
+                    <input type="password" id="admin-pass-input" placeholder="Kata sandi akun Firebase" required autocomplete="current-password" class="w-full bg-navy-950 border border-gold-500/30 text-white text-xs rounded-xl p-3 text-center focus:outline-none focus:border-gold-500">
                 </div>
                 <button type="submit" class="w-full py-3 rounded-xl bg-gold-gradient text-navy-950 font-extrabold text-xs shadow-md hover:brightness-105 transition-all">
                     Masuk Mode Admin
@@ -1232,91 +1240,99 @@ https://hgn.lampungbarat.go.id</textarea>
 
         // Real-Time Cloud Listeners for Multi-Device Sync
         function setupCloudSyncListeners() {
-            if (!window.fbDB) return;
-
+            if (!window.fbDB || window.__hgnPublicListenersStarted) return;
+            window.__hgnPublicListenersStarted = true;
             const db = window.fbDB;
             const appId = window.fbAppId;
-            const collection = window.fbCollection;
+            const doc = window.fbDoc;
             const onSnapshot = window.fbOnSnapshot;
+            const collection = window.fbCollection;
 
-            // 1. Sync Public Content & Settings
-            try {
-                const settingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'settings');
-                onSnapshot(settingsRef, (snapshot) => {
-                    snapshot.forEach(docSnap => {
-                        if (docSnap.id === 'site_content') {
-                            setStored('hgn_content', docSnap.data());
-                            applyContent();
-                        } else if (docSnap.id === 'lock_state') {
-                            const locked = docSnap.data().locked;
-                            localStorage.setItem('hgn_registration_locked', locked ? 'true' : 'false');
-                            applyLockStateUI();
-                        } else if (docSnap.id === 'admin_config') {
-                            if (docSnap.data().masterPass) {
-                                setStored('hgn_admin_pass', docSnap.data().masterPass);
-                            }
-                        } else if (docSnap.id === 'categories_config' && Array.isArray(docSnap.data().items)) {
-                            setStored('hgn_categories', docSnap.data().items);
-                            renderCategories();
-                            if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminCategories();
-                        } else if (docSnap.id === 'timeline_config' && Array.isArray(docSnap.data().items)) {
-                            setStored('hgn_timeline', docSnap.data().items);
-                            renderTimeline();
-                            if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminTimeline();
+            // Listen only to explicitly public settings documents. Never read admin_config.
+            const publicSettings = ['site_content', 'lock_state', 'categories_config', 'timeline_config'];
+            publicSettings.forEach((id) => {
+                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'settings', id);
+                onSnapshot(ref, (snap) => {
+                    if (!snap.exists()) return;
+                    const data = snap.data();
+                    if (id === 'site_content') { setStored('hgn_content', data); applyContent(); }
+                    else if (id === 'lock_state') {
+                        localStorage.setItem('hgn_registration_locked', data.locked ? 'true' : 'false');
+                        applyLockStateUI();
+                    } else if (id === 'categories_config' && Array.isArray(data.items)) {
+                        setStored('hgn_categories', data.items); renderCategories();
+                        if (window.__hgnIsAdmin) renderAdminCategories();
+                    } else if (id === 'timeline_config' && Array.isArray(data.items)) {
+                        setStored('hgn_timeline', data.items); renderTimeline();
+                        if (window.__hgnIsAdmin) renderAdminTimeline();
+                    }
+                }, (err) => console.warn('Public settings listener:', err?.code || err));
+            });
+
+            const annRef = collection(db, 'artifacts', appId, 'public', 'data', 'announcements');
+            onSnapshot(annRef, (snapshot) => {
+                const cloudAnns = [];
+                snapshot.forEach(d => cloudAnns.push({ id: d.id, ...d.data() }));
+                if (snapshot.size) setStored('hgn_announcements', cloudAnns);
+                renderPublicAnnouncements();
+                if (window.__hgnIsAdmin) renderAdminAnnouncementsTable();
+            }, (err) => console.warn('Announcements listener:', err?.code || err));
+        }
+
+        function setupRoleSpecificCloudListeners(user) {
+            if (window.__hgnRoleUnsubs) window.__hgnRoleUnsubs.forEach(unsub => { try { unsub(); } catch(e) {} });
+            window.__hgnRoleUnsubs = [];
+            window.__hgnIsAdmin = !!user && user.uid === window.HGN_ADMIN_UID;
+            localStorage.setItem('hgn_admin_active', window.__hgnIsAdmin ? 'true' : 'false');
+            if (window.__hgnIsAdmin) {
+                toggleAdminMode(true);
+                const db = window.fbDB, appId = window.fbAppId;
+                const usersRef = window.fbCollection(db, 'artifacts', appId, 'public', 'data', 'users');
+                const subsRef = window.fbCollection(db, 'artifacts', appId, 'public', 'data', 'submissions');
+                window.__hgnRoleUnsubs.push(window.fbOnSnapshot(usersRef, (snapshot) => {
+                    const cloudUsers = [];
+                    snapshot.forEach(d => {
+                        const data = d.data();
+                        cloudUsers.push({ id: d.id, ...data });
+                        // Remove legacy plaintext passwords from existing Firestore profiles.
+                        if (Object.prototype.hasOwnProperty.call(data, 'password')) {
+                            window.fbUpdateDoc(window.fbDoc(db, 'artifacts', appId, 'public', 'data', 'users', d.id), { password: window.fbDeleteField })
+                                .catch(err => console.warn('Legacy password cleanup:', err?.code || err));
                         }
                     });
-                }, (err) => { console.error("Cloud settings listener error:", err); if (err?.code === "permission-denied") showToast("Tidak dapat membaca data cloud: izin Firestore ditolak. Periksa Firestore Rules.", "error"); });
-            } catch(e) {}
-
-            // 2. Sync All Participants (Users)
-            try {
-                const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users');
-                onSnapshot(usersRef, (snapshot) => {
-                    if (!snapshot.empty) {
-                        const cloudUsers = [];
-                        snapshot.forEach(docSnap => cloudUsers.push({ id: docSnap.id, ...docSnap.data() }));
-                        setStored('hgn_users', cloudUsers);
-                        renderNavAuth();
-                        checkAndRenderPortal();
-                        if (localStorage.getItem('hgn_admin_active') === 'true') {
-                            renderAdminStats();
-                            renderAdminUsersTable();
+                    setStored('hgn_users', cloudUsers.map(({password, ...u}) => u)); renderNavAuth(); checkAndRenderPortal();
+                    renderAdminStats(); renderAdminUsersTable();
+                }, err => console.warn('Admin users listener:', err?.code || err)));
+                window.__hgnRoleUnsubs.push(window.fbOnSnapshot(subsRef, (snapshot) => {
+                    const cloudSubs = [];
+                    snapshot.forEach(d => cloudSubs.push({ id: d.id, ...d.data() }));
+                    setStored('hgn_submissions', cloudSubs); renderAdminStats(); renderAdminSubmissionsTable();
+                }, err => console.warn('Admin submissions listener:', err?.code || err)));
+            } else {
+                toggleAdminMode(false);
+                if (user && user.email) {
+                    const profileRef = window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'users', user.uid);
+                    window.__hgnRoleUnsubs.push(window.fbOnSnapshot(profileRef, (snap) => {
+                        if (snap.exists()) {
+                            const profile = { id: user.uid, ...snap.data() };
+                            const current = getStored('hgn_session', null);
+                            if (current && current.id === user.uid) {
+                                setStored('hgn_session', profile); renderNavAuth(); checkAndRenderPortal();
+                            }
                         }
-                    }
-                }, (err) => console.log("Cloud users listener notice:", err));
-            } catch(e) {}
-
-            // 3. Sync All Submissions
-            try {
-                const subsRef = collection(db, 'artifacts', appId, 'public', 'data', 'submissions');
-                onSnapshot(subsRef, (snapshot) => {
-                    if (!snapshot.empty) {
-                        const cloudSubs = [];
-                        snapshot.forEach(docSnap => cloudSubs.push({ id: docSnap.id, ...docSnap.data() }));
-                        setStored('hgn_submissions', cloudSubs);
-                        const user = getStored('hgn_session', null);
-                        if (user) renderMySubmissions(user.id);
-                        if (localStorage.getItem('hgn_admin_active') === 'true') {
-                            renderAdminStats();
-                            renderAdminSubmissionsTable();
-                        }
-                    }
-                }, (err) => console.log("Cloud submissions listener notice:", err));
-            } catch(e) {}
-
-            // 4. Sync Public Announcements
-            try {
-                const annRef = collection(db, 'artifacts', appId, 'public', 'data', 'announcements');
-                onSnapshot(annRef, (snapshot) => {
-                    if (!snapshot.empty) {
-                        const cloudAnns = [];
-                        snapshot.forEach(docSnap => cloudAnns.push({ id: docSnap.id, ...docSnap.data() }));
-                        setStored('hgn_announcements', cloudAnns);
-                        renderPublicAnnouncements();
-                        if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminAnnouncementsTable();
-                    }
-                }, (err) => console.log("Cloud announcements listener notice:", err));
-            } catch(e) {}
+                    }, err => console.warn('Participant profile listener:', err?.code || err)));
+                    const q = window.fbQuery(
+                        window.fbCollection(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'submissions'),
+                        window.fbWhere('userId', '==', user.uid)
+                    );
+                    window.__hgnRoleUnsubs.push(window.fbOnSnapshot(q, (snapshot) => {
+                        const mine = []; snapshot.forEach(d => mine.push({ id: d.id, ...d.data() }));
+                        const all = getStored('hgn_submissions', []).filter(s => s.userId !== user.uid).concat(mine);
+                        setStored('hgn_submissions', all);
+                        renderMySubmissions(user.uid);
+                    }, err => console.warn('Participant submissions listener:', err?.code || err)));
+                }
+            }
         }
 
         // INITIALIZATION
@@ -1328,10 +1344,9 @@ https://hgn.lampungbarat.go.id</textarea>
             if (!localStorage.getItem('hgn_announcements')) setStored('hgn_announcements', defaultAnnouncements);
             if (!localStorage.getItem('hgn_content')) setStored('hgn_content', defaultContent);
             
-            const storedPass = localStorage.getItem('hgn_admin_pass');
-            if (!storedPass || storedPass === 'admin123' || storedPass === '"admin123"') {
-                setStored('hgn_admin_pass', 'admingtk');
-            }
+            localStorage.removeItem('hgn_admin_pass'); // Kata sandi admin tidak lagi disimpan di browser.
+            const legacyUsers = getStored('hgn_users', []);
+            if (Array.isArray(legacyUsers)) setStored('hgn_users', legacyUsers.map(({password, ...u}) => u));
 
             applyContent();
             renderCategories();
@@ -1341,15 +1356,23 @@ https://hgn.lampungbarat.go.id</textarea>
             checkAndRenderPortal();
             applyLockStateUI();
 
-            if (localStorage.getItem('hgn_admin_active') === 'true') {
-                toggleAdminMode(true);
+            // localStorage bukan bukti admin. Status admin ditetapkan oleh Firebase Auth.
+            if (!window.fbAuth?.currentUser || window.fbAuth.currentUser.uid !== window.HGN_ADMIN_UID) {
+                localStorage.setItem('hgn_admin_active', 'false'); window.__hgnIsAdmin = false;
             }
         });
 
         // Trigger Cloud Sync Listener after Cloud Auth
-        window.onCloudReady = () => {
-            setupCloudSyncListeners();
+        window.onCloudReady = () => setupCloudSyncListeners();
+        window.onCloudAuthChanged = (user) => {
+            if (window.__hgnCloudAuthReady) setupCloudSyncListeners();
+            setupRoleSpecificCloudListeners(user || null);
         };
+        // Handle the case where the Firebase module finishes before this script runs.
+        if (window.__hgnCloudAuthReady) {
+            window.onCloudReady();
+            window.onCloudAuthChanged(window.fbAuth?.currentUser || null);
+        }
 
         // Helper to Push Updates to Firestore Cloud Database
         async function pushCloudDoc(collectionName, docId, dataObject, merge = true) {
@@ -1438,26 +1461,7 @@ https://hgn.lampungbarat.go.id</textarea>
         // MASTER ADMIN PASSWORD CHANGER
         function handleMasterPasswordChange(e) {
             e.preventDefault();
-            const currentPass = getStored('hgn_admin_pass', 'admingtk');
-            const oldInput = document.getElementById('admin-old-pass').value;
-            const newInput = document.getElementById('admin-new-pass').value;
-            const confirmInput = document.getElementById('admin-confirm-pass').value;
-
-            if (oldInput !== currentPass && oldInput !== 'admingtk') {
-                showToast("Kata sandi lama admin salah!", "error");
-                return;
-            }
-            if (newInput !== confirmInput) {
-                showToast("Konfirmasi kata sandi baru tidak cocok!", "error");
-                return;
-            }
-
-            setStored('hgn_admin_pass', newInput);
-            
-            // Sync Master Password to Cloud Database
-            pushCloudDoc('settings', 'admin_config', { masterPass: newInput });
-
-            showToast("Master Password Admin Berhasil Diperbarui!", "success");
+            showToast('Kata sandi admin dikelola melalui Firebase Authentication. Buka Firebase Console → Authentication → Users untuk mengirim reset password; kata sandi tidak disimpan di Firestore.', 'warning');
             e.target.reset();
         }
 
@@ -1473,23 +1477,19 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('admin-reset-pass-modal').classList.add('opacity-0', 'pointer-events-none');
         }
 
-        function handleConfirmResetPassword(e) {
+        async function handleConfirmResetPassword(e) {
             e.preventDefault();
             const userId = document.getElementById('reset-target-user-id').value;
-            const newPass = document.getElementById('reset-new-password').value;
             const users = getStored('hgn_users', defaultUsers);
-
-            const idx = users.findIndex(u => u.id === userId);
-            if (idx !== -1) {
-                users[idx].password = newPass;
-                setStored('hgn_users', users);
-                
-                // Sync to Cloud Database
-                pushCloudDoc('users', userId, users[idx]);
-
-                renderAdminUsersTable();
+            const target = users.find(u => u.id === userId);
+            if (!target?.email) { showToast('Email peserta tidak ditemukan.', 'error'); return; }
+            try {
+                await window.fbSendPasswordResetEmail(window.fbAuth, target.email);
                 closeResetPassModal();
-                showToast(`Password untuk ${users[idx].name} berhasil di-reset!`, "success");
+                showToast(`Tautan reset password dikirim ke ${target.email}.`, 'success');
+            } catch (err) {
+                console.error('Password reset error:', err);
+                showToast('Gagal mengirim reset password. Periksa konfigurasi email Firebase.', 'error');
             }
         }
 
@@ -1933,81 +1933,78 @@ https://hgn.lampungbarat.go.id</textarea>
             }
         }
 
-        function handleRegisterSubmit(e) {
+        async function handleRegisterSubmit(e) {
             e.preventDefault();
-            if (isRegistrationLocked()) {
-                showToast("Pendaftaran telah ditutup oleh Panitia!", "error");
-                return;
-            }
-
-            const users = getStored('hgn_users', defaultUsers);
+            if (isRegistrationLocked()) { showToast("Pendaftaran telah ditutup oleh Panitia!", "error"); return; }
+            if (!window.fbAuth) { showToast('Firebase belum siap. Periksa koneksi internet.', 'error'); return; }
             const email = document.getElementById('reg-email').value.trim();
-
-            if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-                showToast("Email sudah terdaftar!", "error");
-                return;
+            const password = document.getElementById('reg-password').value;
+            try {
+                const credential = await window.fbCreateUserWithEmailAndPassword(window.fbAuth, email, password);
+                const newUser = {
+                    id: credential.user.uid,
+                    name: document.getElementById('reg-name').value.trim(),
+                    ttl: document.getElementById('reg-ttl').value,
+                    nip: document.getElementById('reg-nip').value,
+                    pangkat: document.getElementById('reg-pangkat').value,
+                    statusPegawai: document.getElementById('reg-status-pegawai').value,
+                    pendidikan: document.getElementById('reg-pendidikan').value,
+                    masaKerja: document.getElementById('reg-masakerja').value,
+                    mapel: document.getElementById('reg-mapel').value,
+                    school: document.getElementById('reg-school').value,
+                    jenjang: document.getElementById('reg-jenjang').value,
+                    kecamatan: document.getElementById('reg-kecamatan').value,
+                    alamatSekolah: document.getElementById('reg-alamat-sekolah').value,
+                    phone: document.getElementById('reg-phone').value,
+                    judulKarya: document.getElementById('reg-judul-karya').value,
+                    email: email,
+                    status: 'PENDING',
+                    created_at: new Date().toISOString().split('T')[0]
+                };
+                const result = await pushCloudDoc('users', newUser.id, newUser, false);
+                if (!result.ok) throw new Error(result.error || 'Profil peserta belum tersimpan.');
+                setStored('hgn_session', null);
+                showToast('Pendaftaran berhasil dikirim. Akun menunggu verifikasi admin.', 'warning');
+                e.target.reset(); switchAuthMode('login');
+            } catch (err) {
+                console.error('Registration error:', err);
+                const msg = err?.code === 'auth/email-already-in-use' ? 'Email sudah terdaftar.' :
+                    err?.code === 'auth/weak-password' ? 'Password minimal 6 karakter.' :
+                    err?.code === 'permission-denied' ? 'Firestore Rules menolak pendaftaran. Periksa rules yang disertakan.' :
+                    (err?.message || 'Pendaftaran gagal. Periksa koneksi dan data.');
+                showToast(msg, 'error');
             }
-
-            const newUser = {
-                id: 'usr_' + Date.now(),
-                name: document.getElementById('reg-name').value,
-                ttl: document.getElementById('reg-ttl').value,
-                nip: document.getElementById('reg-nip').value,
-                pangkat: document.getElementById('reg-pangkat').value,
-                statusPegawai: document.getElementById('reg-status-pegawai').value,
-                pendidikan: document.getElementById('reg-pendidikan').value,
-                masaKerja: document.getElementById('reg-masakerja').value,
-                mapel: document.getElementById('reg-mapel').value,
-                school: document.getElementById('reg-school').value,
-                jenjang: document.getElementById('reg-jenjang').value,
-                kecamatan: document.getElementById('reg-kecamatan').value,
-                alamatSekolah: document.getElementById('reg-alamat-sekolah').value,
-                phone: document.getElementById('reg-phone').value,
-                judulKarya: document.getElementById('reg-judul-karya').value,
-                email: email,
-                password: document.getElementById('reg-password').value,
-                status: 'PENDING',
-                created_at: new Date().toISOString().split('T')[0]
-            };
-
-            users.push(newUser);
-            setStored('hgn_users', users);
-
-            // Sync New Participant Registration to Cloud Database
-            pushCloudDoc('users', newUser.id, newUser);
-
-            showToast("Formulir Berhasil Dikirim! Akun Anda kini menunggu verifikasi Resmi Admin Disdikbud & GTK.", "warning");
-            e.target.reset();
-            switchAuthMode('login');
-            if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminUsersTable();
         }
 
-        function handleLoginSubmit(e) {
+        async function handleLoginSubmit(e) {
             e.preventDefault();
             const email = document.getElementById('login-email').value.trim();
             const pass = document.getElementById('login-password').value;
-            const users = getStored('hgn_users', defaultUsers);
-
-            const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
-
-            if (!user) {
-                showToast("Email atau password salah!", "error");
-                return;
+            try {
+                const credential = await window.fbSignInWithEmailAndPassword(window.fbAuth, email, pass);
+                if (credential.user.uid === window.HGN_ADMIN_UID) {
+                    await window.fbSignOut(window.fbAuth);
+                    showToast('Gunakan tombol login administrator.', 'warning'); return;
+                }
+                const profileRef = window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'users', credential.user.uid);
+                const snap = await window.fbGetDoc(profileRef);
+                if (!snap.exists()) { await window.fbSignOut(window.fbAuth); showToast('Profil peserta tidak ditemukan. Silakan daftar kembali.', 'error'); return; }
+                const user = { id: credential.user.uid, ...snap.data() };
+                if (user.status !== 'VERIFIED') {
+                    await window.fbSignOut(window.fbAuth);
+                    showToast('AKUN BELUM DIVERIFIKASI! Tunggu persetujuan Admin.', 'warning'); return;
+                }
+                setStored('hgn_session', user); renderNavAuth(); checkAndRenderPortal();
+                showToast(`Selamat datang, ${user.name}!`, 'success');
+            } catch (err) {
+                console.error('Participant login error:', err);
+                showToast(err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found' ? 'Email atau password salah!' : (err?.message || 'Login gagal.'), 'error');
             }
-
-            if (user.status !== 'VERIFIED') {
-                showToast("AKUN BELUM DIVERIFIKASI! Tunggu persetujuan Resmi Admin Disdikbud & GTK.", "warning");
-                return;
-            }
-
-            setStored('hgn_session', user);
-            renderNavAuth();
-            checkAndRenderPortal();
-            showToast(`Selamat datang, ${user.name}!`, "success");
         }
 
-        function handleLogout() {
+        async function handleLogout() {
             localStorage.removeItem('hgn_session');
+            try { if (window.fbAuth?.currentUser && window.fbAuth.currentUser.uid !== window.HGN_ADMIN_UID) await window.fbSignOut(window.fbAuth); } catch(e) { console.warn(e); }
             renderNavAuth();
             checkAndRenderPortal();
             showToast("Anda telah keluar dari sesi.", "success");
@@ -2112,54 +2109,60 @@ https://hgn.lampungbarat.go.id</textarea>
         }
 
         // ADMIN PANEL FUNCTIONS
-        function showAdminLoginModal() { 
-            const input = document.getElementById('admin-pass-input');
-            if (input) input.value = '';
-            document.getElementById('admin-login-modal').classList.remove('opacity-0', 'pointer-events-none'); 
+        function showAdminLoginModal() {
+            const pass = document.getElementById('admin-pass-input');
+            const email = document.getElementById('admin-email-input');
+            if (pass) pass.value = ''; if (email) email.value = '';
+            document.getElementById('admin-login-modal').classList.remove('opacity-0', 'pointer-events-none');
         }
 
-        function closeAdminLoginModal() { 
-            document.getElementById('admin-login-modal').classList.add('opacity-0', 'pointer-events-none'); 
+        function closeAdminLoginModal() {
+            document.getElementById('admin-login-modal').classList.add('opacity-0', 'pointer-events-none');
         }
 
         function resetAdminPasswordToDefault() {
-            setStored('hgn_admin_pass', 'admingtk');
-            const input = document.getElementById('admin-pass-input');
-            if (input) input.value = 'admingtk';
-            showToast("Password Admin di-reset ke 'admingtk'", "success");
+            showToast('Password bawaan telah dinonaktifkan. Gunakan reset password Firebase Authentication.', 'warning');
         }
 
-        function handleAdminLogin(e) {
+        async function handleAdminLogin(e) {
             e.preventDefault();
-            const masterPass = getStored('hgn_admin_pass', 'admingtk');
-            const inputPass = document.getElementById('admin-pass-input').value.trim();
-
-            // Check against stored pass OR fail-safe default 'admingtk'
-            if (inputPass === masterPass || inputPass === 'admingtk') {
-                closeAdminLoginModal();
-                toggleAdminMode(true);
-                showToast("Mode Admin Aktif!", "success");
-            } else {
-                showToast("Kata Sandi Admin Salah!", "error");
+            const email = document.getElementById('admin-email-input').value.trim();
+            const pass = document.getElementById('admin-pass-input').value;
+            try {
+                const credential = await window.fbSignInWithEmailAndPassword(window.fbAuth, email, pass);
+                if (credential.user.uid !== window.HGN_ADMIN_UID) {
+                    await window.fbSignOut(window.fbAuth);
+                    showToast('Akun ini bukan akun administrator yang diizinkan.', 'error'); return;
+                }
+                localStorage.setItem('hgn_admin_active', 'true');
+                window.__hgnIsAdmin = true;
+                closeAdminLoginModal(); toggleAdminMode(true); setupRoleSpecificCloudListeners(credential.user);
+                showToast('Login admin Firebase berhasil.', 'success');
+            } catch (err) {
+                console.error('Admin login error:', err);
+                showToast(err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found' ? 'Email atau kata sandi admin salah.' : (err?.message || 'Login admin gagal.'), 'error');
             }
         }
 
         function toggleAdminMode(activate) {
-            localStorage.setItem('hgn_admin_active', activate ? 'true' : 'false');
-            const section = document.getElementById('admin-panel-section');
-
-            if (!section) return;
-
-            if (activate) {
-                section.classList.remove('hidden');
-                renderAdminStats();
-                renderAdminUsersTable();
-                renderAdminSubmissionsTable();
-                renderAdminAnnouncementsTable();
-                section.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                section.classList.add('hidden');
+            const isVerifiedAdmin = !!window.fbAuth?.currentUser && window.fbAuth.currentUser.uid === window.HGN_ADMIN_UID;
+            if (activate && !isVerifiedAdmin) {
+                localStorage.setItem('hgn_admin_active', 'false');
+                window.__hgnIsAdmin = false;
+                const deniedSection = document.getElementById('admin-panel-section');
+                if (deniedSection) deniedSection.classList.add('hidden');
+                return;
             }
+            localStorage.setItem('hgn_admin_active', activate ? 'true' : 'false');
+            window.__hgnIsAdmin = !!activate;
+            if (!activate && isVerifiedAdmin) window.fbSignOut(window.fbAuth).catch(err => console.warn('Admin sign-out:', err));
+            const section = document.getElementById('admin-panel-section');
+            if (!section) return;
+            if (activate) {
+                section.classList.remove('hidden'); renderAdminStats(); renderAdminUsersTable();
+                renderAdminSubmissionsTable(); renderAdminAnnouncementsTable();
+                section.scrollIntoView({ behavior: 'smooth' });
+            } else section.classList.add('hidden');
         }
 
         function switchAdminTab(tab) {
@@ -2222,7 +2225,7 @@ https://hgn.lampungbarat.go.id</textarea>
                         <div class="text-[11px] text-slate-400">${u.school || '-'} (Kec. ${u.kecamatan || '-'})</div>
                     </td>
                     <td class="p-4 text-amber-400 font-mono font-bold">${u.email}</td>
-                    <td class="p-4 font-mono text-slate-300 font-bold">${u.password}</td>
+                    <td class="p-4 font-mono text-slate-300 font-bold">${u.password ? "(akun lama)" : "Dikelola Firebase"}</td>
                     <td class="p-4">
                         <div class="text-white">${u.nip || '-'}</div>
                         <div class="text-[10px] text-amber-400 font-bold">${u.statusPegawai || 'Non-ASN'}</div>
