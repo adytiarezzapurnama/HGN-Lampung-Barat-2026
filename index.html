@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title-tag">HGN & HUT PGRI Ke-81 Lampung Barat - Disdikbud & Komunitas GTK</title>
+    <title id="page-title-tag">HGN & HUT PGRI Ke-81 Lampung Barat - Dinas Pendidikan dan Kebudayaan & Komunitas GTK</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -222,12 +222,12 @@
                 <!-- Logos & Title -->
                 <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('home')">
                     <div class="flex items-center space-x-2 bg-navy-900 p-2 rounded-2xl border border-gold-500/30 shadow-inner">
-                        <img id="nav-logo-gtk" src="https://placehold.co/100x100/0f172a/fbbf24?text=GTK" alt="Logo GTK" class="w-9 h-9 object-contain rounded-xl bg-slate-800/80 p-1" onerror="this.src='https://placehold.co/100x100/0f172a/fbbf24?text=GTK'">
-                        <img id="nav-logo-disdik" src="https://placehold.co/100x100/0f172a/fbbf24?text=DISDIK" alt="Logo Disdik" class="w-9 h-9 object-contain rounded-xl bg-slate-800/80 p-1" onerror="this.src='https://placehold.co/100x100/0f172a/fbbf24?text=DISDIK'">
+                        <img id="nav-logo-disdik" src="https://placehold.co/100x100/0f172a/fbbf24?text=DISDIK" alt="Logo Dinas Pendidikan dan Kebudayaan" class="w-9 h-9 object-contain rounded-xl bg-slate-800/80 p-1" onerror="this.onerror=null; this.alt='Logo Dinas Pendidikan tidak dapat dimuat';">
+                        <img id="nav-logo-gtk" src="https://placehold.co/100x100/0f172a/fbbf24?text=GTK" alt="Logo Komunitas GTK" class="w-9 h-9 object-contain rounded-xl bg-slate-800/80 p-1" onerror="this.onerror=null; this.alt='Logo GTK tidak dapat dimuat';">
                     </div>
                     <div class="border-l border-gold-500/30 pl-3">
                         <span id="nav-badge-text" class="block text-[10px] font-extrabold text-gold-400 uppercase tracking-widest font-serif">SEMARAK HGN LAMPUNG BARAT & HUT PGRI</span>
-                        <span id="nav-app-title" class="block text-xs sm:text-sm font-bold text-white tracking-tight">Komunitas GTK & Disdikbud</span>
+                        <span id="nav-app-title" class="block text-xs sm:text-sm font-bold text-white tracking-tight">Dinas Pendidikan dan Kebudayaan & Komunitas GTK</span>
                     </div>
                 </div>
 
@@ -457,11 +457,12 @@
                     <div class="space-y-4 p-4 rounded-xl bg-navy-950 border border-slate-800">
                         <h4 class="text-xs font-bold text-gold-400 uppercase tracking-wider">Logo GTK Lampung Barat</h4>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-200 mb-1">Unggah File Gambar (PNG/JPG):</label>
-                            <input type="file" id="upload-logo-gtk-file" accept="image/*" onchange="handleFileUpload(event, 'edit-logo-gtk')" class="w-full bg-navy-900 border border-gold-500/30 text-slate-300 text-xs rounded-xl p-2">
+                            <label class="block text-xs font-semibold text-slate-200 mb-1">Unggah File Gambar (PNG/JPG/WebP, maks. 2 MB):</label>
+                            <input type="file" id="upload-logo-gtk-file" accept="image/png,image/jpeg,image/webp" onchange="handleFileUpload(event, 'edit-logo-gtk')" class="w-full bg-navy-900 border border-gold-500/30 text-slate-300 text-xs rounded-xl p-2">
+                            <img id="preview-logo-gtk" alt="Pratinjau logo GTK" class="hidden mt-3 h-20 w-20 rounded-xl bg-white object-contain p-2 border border-slate-300">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-200 mb-1">Atau Masukkan URL Gambar Logo GTK:</label>
+                            <label class="block text-xs font-semibold text-slate-200 mb-1">Atau gunakan URL gambar logo GTK:</label>
                             <input type="url" id="edit-logo-gtk" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5">
                         </div>
                     </div>
@@ -470,11 +471,12 @@
                     <div class="space-y-4 p-4 rounded-xl bg-navy-950 border border-slate-800">
                         <h4 class="text-xs font-bold text-gold-400 uppercase tracking-wider">Logo Disdikbud Lampung Barat</h4>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-200 mb-1">Unggah File Gambar (PNG/JPG):</label>
-                            <input type="file" id="upload-logo-disdik-file" accept="image/*" onchange="handleFileUpload(event, 'edit-logo-disdik')" class="w-full bg-navy-900 border border-gold-500/30 text-slate-300 text-xs rounded-xl p-2">
+                            <label class="block text-xs font-semibold text-slate-200 mb-1">Unggah File Gambar (PNG/JPG/WebP, maks. 2 MB):</label>
+                            <input type="file" id="upload-logo-disdik-file" accept="image/png,image/jpeg,image/webp" onchange="handleFileUpload(event, 'edit-logo-disdik')" class="w-full bg-navy-900 border border-gold-500/30 text-slate-300 text-xs rounded-xl p-2">
+                            <img id="preview-logo-disdik" alt="Pratinjau logo Dinas Pendidikan dan Kebudayaan" class="hidden mt-3 h-20 w-20 rounded-xl bg-white object-contain p-2 border border-slate-300">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-200 mb-1">Atau Masukkan URL Gambar Logo Disdik:</label>
+                            <label class="block text-xs font-semibold text-slate-200 mb-1">Atau gunakan URL gambar logo Dinas Pendidikan:</label>
                             <input type="url" id="edit-logo-disdik" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5">
                         </div>
                     </div>
@@ -658,7 +660,7 @@ Contact Person Panitia:
                         </div>
                         <textarea id="copy-flyer-wa" readonly class="w-full h-56 bg-navy-900 text-slate-300 text-xs p-3 rounded-xl border border-slate-800 font-mono leading-relaxed focus:outline-none">Yth. Bapak/Ibu Guru dan Kepala Sekolah se-Kabupaten Lampung Barat,
 
-Komunitas GTK bekerja sama dengan Dinas Pendidikan dan Kebudayaan Lampung Barat menyelenggarakan Semarak Hari Guru Nasional & HUT PGRI Ke-81.
+Dinas Pendidikan dan Kebudayaan Lampung Barat berkolaborasi dengan Komunitas GTK menyelenggarakan Semarak Hari Guru Nasional & HUT PGRI Ke-81.
 
 Timeline Penting:
 - Pendaftaran & Unggah Berkas: 5 - 15 November 2026
@@ -688,17 +690,17 @@ https://hgn.lampungbarat.go.id</textarea>
                     <!-- Collaboration Badge -->
                     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-50 border border-amber-300 text-amber-800 text-xs sm:text-sm font-bold mb-8 shadow-sm">
                         <i class="fa-solid fa-award text-gold-600"></i>
-                        <span>Kolaborasi Komunitas GTK & Dinas Pendidikan dan Kebudayaan Kab. Lampung Barat</span>
+                        <span>Kolaborasi Dinas Pendidikan dan Kebudayaan Lampung Barat & Komunitas GTK</span>
                     </div>
 
                     <!-- Dynamic Logos Header Display -->
                     <div class="flex justify-center items-center gap-6 mb-8">
                         <div class="p-2 bg-white rounded-2xl border border-slate-200 shadow-md">
-                            <img id="hero-logo-gtk" src="https://placehold.co/100x100/0f172a/fbbf24?text=GTK" alt="Logo GTK" class="w-20 h-20 object-contain rounded-xl" onerror="this.src='https://placehold.co/100x100/0f172a/fbbf24?text=GTK'">
+                            <img id="hero-logo-disdik" src="https://placehold.co/100x100/0f172a/fbbf24?text=DISDIK" alt="Logo Dinas Pendidikan dan Kebudayaan" class="w-20 h-20 object-contain rounded-xl" onerror="this.onerror=null; this.alt='Logo Dinas Pendidikan tidak dapat dimuat';">
                         </div>
                         <span class="text-amber-500 text-3xl font-black">&times;</span>
                         <div class="p-2 bg-white rounded-2xl border border-slate-200 shadow-md">
-                            <img id="hero-logo-disdik" src="https://placehold.co/100x100/0f172a/fbbf24?text=DISDIK" alt="Logo Disdik" class="w-20 h-20 object-contain rounded-xl" onerror="this.src='https://placehold.co/100x100/0f172a/fbbf24?text=DISDIK'">
+                            <img id="hero-logo-gtk" src="https://placehold.co/100x100/0f172a/fbbf24?text=GTK" alt="Logo Komunitas GTK" class="w-20 h-20 object-contain rounded-xl" onerror="this.onerror=null; this.alt='Logo GTK tidak dapat dimuat';">
                         </div>
                     </div>
 
@@ -1087,9 +1089,9 @@ https://hgn.lampungbarat.go.id</textarea>
     <footer class="bg-navy-950 border-t border-gold-500/20 py-8 text-center text-xs text-slate-400 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
             <div class="flex flex-wrap justify-center items-center gap-3 text-slate-200">
-                <span class="font-bold">Komunitas GTK Lampung Barat</span>
+                <span class="font-bold">Dinas Pendidikan dan Kebudayaan Kabupaten Lampung Barat</span>
                 <span>&bull;</span>
-                <span class="font-bold">Disdikbud Kabupaten Lampung Barat</span>
+                <span class="font-bold">Komunitas GTK Lampung Barat</span>
             </div>
             <p>&copy; 2026 Panitia Pelaksana Semarak Hari Guru Nasional & HUT PGRI Ke-81. All Rights Reserved.</p>
             <div class="pt-2">
@@ -1462,13 +1464,56 @@ https://hgn.lampungbarat.go.id</textarea>
             else showToast("File Penilaian PDF belum diunggah oleh Admin.", "warning");
         }
 
+        // Logo uploads are resized before saving so they fit browser storage and Firestore limits.
+        // Images are embedded in the site settings; they do not require Firebase Storage.
         function handleFileUpload(event, targetInputId) {
-            const file = event.target.files[0];
+            const file = event.target.files && event.target.files[0];
             if (!file) return;
+            const isLogo = targetInputId === 'edit-logo-gtk' || targetInputId === 'edit-logo-disdik';
+            if (isLogo && !file.type.startsWith('image/')) {
+                showToast('Pilih file gambar untuk logo.', 'warning'); event.target.value = ''; return;
+            }
+            if (isLogo && file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran gambar terlalu besar. Pilih gambar maksimal 2 MB.', 'warning'); event.target.value = ''; return;
+            }
             const reader = new FileReader();
+            reader.onerror = () => showToast('File tidak dapat dibaca. Coba pilih gambar lain.', 'warning');
             reader.onload = function(e) {
-                document.getElementById(targetInputId).value = e.target.result;
-                showToast("File berhasil diunggah!", "success");
+                const dataUrl = e.target.result;
+                if (!isLogo) {
+                    document.getElementById(targetInputId).value = dataUrl;
+                    showToast('File berhasil dibaca. Tekan Simpan untuk menerapkan perubahan.', 'success');
+                    return;
+                }
+                const image = new Image();
+                image.onerror = () => showToast('Gambar tidak dapat dibuka. Gunakan PNG, JPG, atau WebP.', 'warning');
+                image.onload = function() {
+                    const maxSide = 480;
+                    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+                    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    let compressed = canvas.toDataURL('image/webp', 0.72);
+                    if (!compressed || compressed.length < 100) compressed = canvas.toDataURL('image/jpeg', 0.72);
+                    // Keep both logo images small enough to fit in one Firestore settings document.
+                    if (compressed.length > 280000) {
+                        const smallScale = Math.min(1, 360 / Math.max(canvas.width, canvas.height));
+                        const smallCanvas = document.createElement('canvas');
+                        smallCanvas.width = Math.max(1, Math.round(canvas.width * smallScale));
+                        smallCanvas.height = Math.max(1, Math.round(canvas.height * smallScale));
+                        smallCanvas.getContext('2d').drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+                        compressed = smallCanvas.toDataURL('image/webp', 0.55);
+                    }
+                    document.getElementById(targetInputId).value = compressed;
+                    const previewId = targetInputId === 'edit-logo-disdik' ? 'preview-logo-disdik' : 'preview-logo-gtk';
+                    const preview = document.getElementById(previewId);
+                    if (preview) { preview.src = compressed; preview.classList.remove('hidden'); }
+                    showToast('Logo siap digunakan. Tekan Simpan Perubahan Logo & Teks Web agar tampil di website.', 'success');
+                };
+                image.src = dataUrl;
             };
             reader.readAsDataURL(file);
         }
@@ -1500,6 +1545,10 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('nav-logo-disdik').src = content.logoDisdikUrl;
             document.getElementById('hero-logo-gtk').src = content.logoGtkUrl;
             document.getElementById('hero-logo-disdik').src = content.logoDisdikUrl;
+            const previewGtk = document.getElementById('preview-logo-gtk');
+            const previewDisdik = document.getElementById('preview-logo-disdik');
+            if (previewGtk && content.logoGtkUrl) { previewGtk.src = content.logoGtkUrl; previewGtk.classList.remove('hidden'); }
+            if (previewDisdik && content.logoDisdikUrl) { previewDisdik.src = content.logoDisdikUrl; previewDisdik.classList.remove('hidden'); }
 
             document.getElementById('edit-logo-gtk').value = content.logoGtkUrl;
             document.getElementById('edit-logo-disdik').value = content.logoDisdikUrl;
