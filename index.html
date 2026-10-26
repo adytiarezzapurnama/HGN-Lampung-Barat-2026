@@ -330,6 +330,9 @@
                 <button onclick="switchAdminTab('categories'); renderAdminCategories()" id="tab-btn-categories" class="px-4 py-2.5 rounded-t-xl font-bold bg-navy-900 text-slate-300 hover:text-white flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-layer-group"></i> Kelola Cabang Lomba
                 </button>
+                <button onclick="switchAdminTab('timeline'); renderAdminTimeline()" id="tab-btn-timeline" class="px-4 py-2.5 rounded-t-xl font-bold bg-navy-900 text-slate-300 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-calendar-days"></i> Kelola Timeline & Jadwal
+                </button>
                 <button onclick="switchAdminTab('editor')" id="tab-btn-editor" class="px-4 py-2.5 rounded-t-xl font-bold bg-navy-900 text-slate-300 hover:text-white flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-pen-to-square"></i> Real-Time Editor & Logo Upload
                 </button>
@@ -442,6 +445,31 @@
                     <section class="bg-navy-900 p-5 sm:p-6 rounded-2xl border border-gold-500/20">
                         <div class="flex items-center justify-between gap-3 mb-5"><div><h3 class="text-lg font-extrabold text-white">Daftar Cabang Aktif</h3><p class="text-xs text-slate-400 mt-1">Kelola daftar yang tampil pada halaman publik.</p></div><span id="category-admin-count" class="px-3 py-1 rounded-full bg-teal-400/10 text-teal-200 text-xs font-extrabold">0 cabang</span></div>
                         <div id="admin-categories-list" class="space-y-3"><p class="text-xs text-slate-400">Memuat cabang lomba...</p></div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- ADMIN TAB: TIMELINE & SCHEDULE MANAGEMENT -->
+            <div id="admin-tab-timeline" class="hidden bg-navy-900 p-6 rounded-2xl border border-gold-500/20 space-y-6">
+                <div>
+                    <h3 class="text-lg font-extrabold text-gold-400"><i class="fa-solid fa-calendar-days mr-2"></i>Kelola Timeline & Jadwal Lomba</h3>
+                    <p class="text-xs text-slate-300 mt-2 leading-relaxed">Admin dapat menambah, mengubah, dan menghapus tahapan serta tanggal sesuai jadwal resmi panitia. Perubahan ditampilkan di halaman Timeline publik.</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <section class="p-5 rounded-2xl bg-navy-950 border border-slate-700">
+                        <h4 id="timeline-form-heading" class="text-sm font-extrabold text-white mb-4">Tambah Tahap / Jadwal</h4>
+                        <form id="timeline-admin-form" onsubmit="saveTimelineStage(event)" class="space-y-4">
+                            <input type="hidden" id="timeline-edit-index" value="">
+                            <div class="hgn-admin-field"><label for="timeline-stage-input">Label tahap *</label><input id="timeline-stage-input" required maxlength="50" placeholder="Contoh: TAHAP 1"></div>
+                            <div class="hgn-admin-field"><label for="timeline-title-input">Nama kegiatan *</label><input id="timeline-title-input" required maxlength="150" placeholder="Contoh: Pendaftaran dan Pengumpulan Berkas"></div>
+                            <div class="hgn-admin-field"><label for="timeline-date-input">Tanggal / rentang waktu *</label><input id="timeline-date-input" required maxlength="100" placeholder="Contoh: 1–10 November 2026"></div>
+                            <div class="hgn-admin-field"><label for="timeline-desc-input">Keterangan kegiatan *</label><textarea id="timeline-desc-input" required rows="4" maxlength="700" placeholder="Jelaskan tahapan kegiatan dan informasi penting bagi peserta"></textarea></div>
+                            <div class="flex flex-wrap gap-2"><button type="submit" id="timeline-save-button" class="px-5 py-3 bg-gold-gradient text-navy-950 font-extrabold text-xs rounded-xl"><i class="fa-solid fa-floppy-disk mr-1"></i>Simpan Tahap</button><button type="button" onclick="resetTimelineAdminForm()" class="hgn-btn-secondary">Bersihkan Form</button></div>
+                        </form>
+                    </section>
+                    <section class="p-5 rounded-2xl bg-navy-950 border border-slate-700">
+                        <div class="flex items-center justify-between gap-3 mb-4"><div><h4 class="text-sm font-extrabold text-white">Daftar Tahapan</h4><p class="text-xs text-slate-400 mt-1">Urutan di sini sama dengan urutan pada halaman publik.</p></div><span id="timeline-admin-count" class="px-3 py-1 rounded-full bg-teal-400/10 text-teal-200 text-xs font-extrabold">0 tahap</span></div>
+                        <div id="admin-timeline-list" class="space-y-3"><p class="text-xs text-slate-400">Memuat jadwal...</p></div>
                     </section>
                 </div>
             </div>
@@ -1231,6 +1259,10 @@ https://hgn.lampungbarat.go.id</textarea>
                             setStored('hgn_categories', docSnap.data().items);
                             renderCategories();
                             if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminCategories();
+                        } else if (docSnap.id === 'timeline_config' && Array.isArray(docSnap.data().items)) {
+                            setStored('hgn_timeline', docSnap.data().items);
+                            renderTimeline();
+                            if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminTimeline();
                         }
                     });
                 }, (err) => console.log("Cloud settings listener notice:", err));
@@ -1594,6 +1626,10 @@ https://hgn.lampungbarat.go.id</textarea>
             return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
         }
 
+        function isStandCategory(title) {
+            return /stand/i.test(String(title || ''));
+        }
+
         function renderCategories() {
             const cats = getStored('hgn_categories', defaultCategories);
             const container = document.getElementById('categories-container');
@@ -1610,11 +1646,11 @@ https://hgn.lampungbarat.go.id</textarea>
                         <div class="text-[10px] font-extrabold tracking-[.16em] uppercase text-teal-700 mb-2">Cabang Lomba ${String(i+1).padStart(2,'0')}</div>
                         <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 mb-3">${escapeHtml(c.title)}</h3>
                         <p class="text-slate-600 text-sm leading-relaxed mb-5">${escapeHtml(c.desc)}</p>
-                        <div class="space-y-2.5 mb-7 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        ${isStandCategory(c.title) ? '' : `<div class="space-y-2.5 mb-7 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                             ${(Array.isArray(c.checkmarks)?c.checkmarks:[]).map(item => `<div class="flex items-start text-xs font-bold text-slate-700"><span class="w-5 h-5 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mr-2 text-xs font-extrabold shrink-0">✓</span><span>${escapeHtml(item)}</span></div>`).join('')}
-                        </div>
+                        </div>`}
                     </div>
-                    <button data-category="${escapeHtml(c.title)}" onclick="handleSelectCategory(this.dataset.category)" class="relative w-full py-3.5 rounded-xl bg-navy-950 hover:bg-teal-500 hover:text-navy-950 text-white font-extrabold text-xs transition-all shadow-md"><i class="fa-solid fa-arrow-right mr-2"></i>Pilih Cabang Lomba</button>
+                    ${isStandCategory(c.title) ? `<div class="mt-2 rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-xs font-semibold text-teal-800"><i class="fa-solid fa-circle-info mr-1"></i>Informasi lomba saja. Cabang ini tidak menggunakan formulir pendaftaran atau tautan unggah berkas melalui website.</div>` : `<button data-category="${escapeHtml(c.title)}" onclick="handleSelectCategory(this.dataset.category)" class="relative w-full py-3.5 rounded-xl bg-navy-950 hover:bg-teal-500 hover:text-navy-950 text-white font-extrabold text-xs transition-all shadow-md"><i class="fa-solid fa-arrow-right mr-2"></i>Pilih Cabang Lomba</button>`}
                 </article>`).join('');
             syncCategoryOptions();
         }
@@ -1633,7 +1669,7 @@ https://hgn.lampungbarat.go.id</textarea>
                 else if (first) { firstLabel = first.textContent; firstValue = first.value; }
                 select.innerHTML = '';
                 const placeholder = document.createElement('option'); placeholder.value = firstValue; placeholder.textContent = firstLabel; select.appendChild(placeholder);
-                cats.forEach(c => { const opt = document.createElement('option'); opt.value = c.title; opt.textContent = c.title; select.appendChild(opt); });
+                cats.filter(c => id !== 'sub-category' || !isStandCategory(c.title)).forEach(c => { const opt = document.createElement('option'); opt.value = c.title; opt.textContent = c.title; select.appendChild(opt); });
                 if ([...select.options].some(o => o.value === oldValue)) select.value = oldValue;
             });
         }
@@ -1706,6 +1742,10 @@ https://hgn.lampungbarat.go.id</textarea>
         }
 
         function handleSelectCategory(catTitle) {
+            if (isStandCategory(catTitle)) {
+                showToast('Lomba Stand hanya menampilkan keterangan. Tidak ada formulir atau tautan unggah berkas di website.', 'success');
+                return;
+            }
             const user = getStored('hgn_session', null);
             navigateTo('portal');
             if (user && user.status === 'VERIFIED') {
@@ -1720,18 +1760,106 @@ https://hgn.lampungbarat.go.id</textarea>
             const timeline = getStored('hgn_timeline', defaultTimeline);
             const container = document.getElementById('timeline-container');
             if (!container) return;
+            if (!timeline.length) {
+                container.innerHTML = '<div class="md:col-span-3 rounded-2xl bg-white border border-slate-200 p-8 text-center text-sm text-slate-500">Jadwal akan diumumkan oleh panitia.</div>';
+                return;
+            }
             container.innerHTML = timeline.map(t => `
                 <div class="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative hover:border-amber-400 transition-all flex flex-col justify-between">
                     <div>
-                        <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold uppercase tracking-wider">${t.stage}</span>
-                        <h4 class="text-lg font-bold text-navy-950 mt-3 mb-1">${t.title}</h4>
-                        <div class="text-xs text-amber-600 font-bold mb-3 flex items-center gap-1.5">
-                            <i class="fa-regular fa-calendar-days"></i> ${t.date}
-                        </div>
-                        <p class="text-xs text-slate-600 leading-relaxed">${t.desc}</p>
+                        <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold uppercase tracking-wider">${escapeHtml(t.stage)}</span>
+                        <h4 class="text-lg font-bold text-navy-950 mt-3 mb-1">${escapeHtml(t.title)}</h4>
+                        <div class="text-xs text-amber-600 font-bold mb-3 flex items-center gap-1.5"><i class="fa-regular fa-calendar-days"></i> ${escapeHtml(t.date)}</div>
+                        <p class="text-xs text-slate-600 leading-relaxed">${escapeHtml(t.desc)}</p>
                     </div>
-                </div>
-            `).join('');
+                </div>`).join('');
+        }
+
+        function renderAdminTimeline() {
+            const list = document.getElementById('admin-timeline-list');
+            if (!list) return;
+            const timeline = getStored('hgn_timeline', defaultTimeline);
+            const count = document.getElementById('timeline-admin-count');
+            if (count) count.textContent = `${timeline.length} tahap`;
+            if (!timeline.length) {
+                list.innerHTML = '<p class="text-xs text-slate-400 p-4">Belum ada tahap. Tambahkan jadwal melalui formulir.</p>';
+                return;
+            }
+            list.innerHTML = timeline.map((t, i) => `
+                <article class="rounded-xl border border-slate-700 bg-navy-900 p-4">
+                    <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span class="text-[10px] font-extrabold tracking-wider text-teal-300">${escapeHtml(t.stage)}</span><h5 class="text-sm font-extrabold text-white mt-1">${escapeHtml(t.title)}</h5><p class="text-xs font-bold text-gold-300 mt-2"><i class="fa-regular fa-calendar mr-1"></i>${escapeHtml(t.date)}</p><p class="text-xs text-slate-400 mt-2 leading-relaxed">${escapeHtml(t.desc)}</p></div><span class="text-xs text-slate-500">${i+1}</span></div>
+                    <div class="flex flex-wrap gap-2 mt-4"><button type="button" onclick="editTimelineStage(${i})" class="hgn-btn-secondary"><i class="fa-solid fa-pen mr-1"></i>Edit</button><button type="button" onclick="moveTimelineStage(${i},-1)" ${i===0?'disabled':''} class="hgn-btn-secondary" aria-label="Naikkan urutan"><i class="fa-solid fa-arrow-up"></i></button><button type="button" onclick="moveTimelineStage(${i},1)" ${i===timeline.length-1?'disabled':''} class="hgn-btn-secondary" aria-label="Turunkan urutan"><i class="fa-solid fa-arrow-down"></i></button><button type="button" onclick="deleteTimelineStage(${i})" class="hgn-btn-danger"><i class="fa-solid fa-trash mr-1"></i>Hapus</button></div>
+                </article>`).join('');
+        }
+
+        function resetTimelineAdminForm() {
+            const form = document.getElementById('timeline-admin-form');
+            if (form) form.reset();
+            const index = document.getElementById('timeline-edit-index');
+            if (index) index.value = '';
+            const heading = document.getElementById('timeline-form-heading');
+            if (heading) heading.textContent = 'Tambah Tahap / Jadwal';
+            const button = document.getElementById('timeline-save-button');
+            if (button) button.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i>Simpan Tahap';
+        }
+
+        function editTimelineStage(index) {
+            const timeline = getStored('hgn_timeline', defaultTimeline);
+            const item = timeline[index];
+            if (!item) return;
+            document.getElementById('timeline-edit-index').value = String(index);
+            document.getElementById('timeline-stage-input').value = item.stage || '';
+            document.getElementById('timeline-title-input').value = item.title || '';
+            document.getElementById('timeline-date-input').value = item.date || '';
+            document.getElementById('timeline-desc-input').value = item.desc || '';
+            document.getElementById('timeline-form-heading').textContent = 'Edit Tahap / Jadwal';
+            document.getElementById('timeline-save-button').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i>Simpan Perubahan';
+            document.getElementById('timeline-stage-input').focus();
+        }
+
+        function persistTimeline(timeline, message) {
+            setStored('hgn_timeline', timeline);
+            pushCloudDoc('settings', 'timeline_config', { items: timeline, updatedAt: new Date().toISOString() });
+            renderTimeline();
+            renderAdminTimeline();
+            showToast(message, 'success');
+        }
+
+        function saveTimelineStage(event) {
+            event.preventDefault();
+            const timeline = getStored('hgn_timeline', defaultTimeline);
+            const indexValue = document.getElementById('timeline-edit-index').value;
+            const item = {
+                stage: document.getElementById('timeline-stage-input').value.trim(),
+                title: document.getElementById('timeline-title-input').value.trim(),
+                date: document.getElementById('timeline-date-input').value.trim(),
+                desc: document.getElementById('timeline-desc-input').value.trim()
+            };
+            if (!item.stage || !item.title || !item.date || !item.desc) {
+                showToast('Lengkapi label tahap, kegiatan, tanggal, dan keterangan.', 'warning');
+                return;
+            }
+            if (indexValue === '') timeline.push(item);
+            else timeline[Number(indexValue)] = item;
+            persistTimeline(timeline, indexValue === '' ? 'Tahap dan jadwal berhasil ditambahkan.' : 'Tahap dan jadwal berhasil diperbarui.');
+            resetTimelineAdminForm();
+        }
+
+        function deleteTimelineStage(index) {
+            const timeline = getStored('hgn_timeline', defaultTimeline);
+            if (!timeline[index]) return;
+            if (!confirm(`Hapus jadwal "${timeline[index].title}"?`)) return;
+            timeline.splice(index, 1);
+            persistTimeline(timeline, 'Jadwal berhasil dihapus.');
+            resetTimelineAdminForm();
+        }
+
+        function moveTimelineStage(index, direction) {
+            const timeline = getStored('hgn_timeline', defaultTimeline);
+            const next = index + direction;
+            if (next < 0 || next >= timeline.length) return;
+            [timeline[index], timeline[next]] = [timeline[next], timeline[index]];
+            persistTimeline(timeline, 'Urutan tahap berhasil diperbarui.');
         }
 
         let currentAnnStage = 'LOLOS_BERKAS';
@@ -2022,7 +2150,7 @@ https://hgn.lampungbarat.go.id</textarea>
         }
 
         function switchAdminTab(tab) {
-            ['users', 'submissions', 'categories', 'editor', 'announcements', 'security', 'promotions'].forEach(t => {
+            ['users', 'submissions', 'categories', 'timeline', 'editor', 'announcements', 'security', 'promotions'].forEach(t => {
                 const tabEl = document.getElementById(`admin-tab-${t}`);
                 const btnEl = document.getElementById(`tab-btn-${t}`);
                 if (tabEl) tabEl.classList.add('hidden');
@@ -2033,6 +2161,7 @@ https://hgn.lampungbarat.go.id</textarea>
             if (activeTab) activeTab.classList.remove('hidden');
             if (activeBtn) activeBtn.className = "px-4 py-2.5 rounded-t-xl font-bold bg-gold-gradient text-navy-950 flex items-center gap-2 whitespace-nowrap shadow-md";
             if (tab === 'categories') renderAdminCategories();
+            if (tab === 'timeline') renderAdminTimeline();
         }
 
         function renderAdminStats() {
