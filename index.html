@@ -792,11 +792,11 @@ https://hgn.lampungbarat.go.id</textarea>
                             <div class="text-xs text-slate-700 mt-1 font-bold">Kecamatan Se-Lampung Barat</div>
                         </div>
                         <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
-                            <div class="text-2xl font-extrabold text-amber-600">Verifikasi Akun</div>
+                            <div class="text-xs font-bold text-amber-700">Verifikasi Akun</div>
                             <div class="text-xs text-slate-700 mt-1 font-bold">Resmi Admin Disdikbud & GTK</div>
                         </div>
                         <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
-                            <div class="text-2xl font-extrabold text-amber-600">Trofi, Sertifikat, & Uang Pembinaan</div>
+                            <div class="text-2xl font-extrabold text-amber-600">Sertifikat</div>
                             <div class="text-xs text-slate-700 mt-1 font-bold">Penghargaan Kab. Lampung Barat</div>
                         </div>
                     </div>
@@ -1265,7 +1265,7 @@ https://hgn.lampungbarat.go.id</textarea>
                             if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminTimeline();
                         }
                     });
-                }, (err) => console.log("Cloud settings listener notice:", err));
+                }, (err) => { console.error("Cloud settings listener error:", err); if (err?.code === "permission-denied") showToast("Tidak dapat membaca data cloud: izin Firestore ditolak. Periksa Firestore Rules.", "error"); });
             } catch(e) {}
 
             // 2. Sync All Participants (Users)
@@ -1353,22 +1353,32 @@ https://hgn.lampungbarat.go.id</textarea>
 
         // Helper to Push Updates to Firestore Cloud Database
         async function pushCloudDoc(collectionName, docId, dataObject, merge = true) {
-            if (!window.fbDB || !window.fbAuth?.currentUser) return;
+            if (!window.fbDB) return { ok: false, error: 'Firebase belum terhubung. Periksa konfigurasi dan koneksi internet.' };
+            if (!window.fbAuth?.currentUser) return { ok: false, error: 'Login cloud belum siap. Tunggu beberapa detik, lalu simpan kembali.' };
             try {
                 const docRef = window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', collectionName, docId);
                 await window.fbSetDoc(docRef, dataObject, { merge });
+                console.info(`Cloud save OK: ${collectionName}/${docId}`);
+                return { ok: true };
             } catch (err) {
-                console.error("Cloud Push Error:", err);
+                console.error(`Cloud Push Error (${collectionName}/${docId}):`, err);
+                let message = 'Firebase menolak penyimpanan.';
+                if (err?.code === 'permission-denied') message = 'Izin Firestore ditolak. Periksa Firestore Rules.';
+                else if (err?.code === 'resource-exhausted' || /size|large/i.test(err?.message || '')) message = 'Data terlalu besar untuk disimpan. Kompres logo atau kurangi ukuran data.';
+                else if (err?.code === 'unavailable' || !navigator.onLine) message = 'Internet/Firebase sedang tidak tersedia.';
+                return { ok: false, error: `${message} Perubahan masih ada di browser ini, tetapi belum tersimpan online.` };
             }
         }
 
         async function deleteCloudDoc(collectionName, docId) {
-            if (!window.fbDB || !window.fbAuth?.currentUser) return;
+            if (!window.fbDB || !window.fbAuth?.currentUser) return { ok: false, error: 'Firebase belum terhubung atau autentikasi belum siap.' };
             try {
                 const docRef = window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', collectionName, docId);
                 await window.fbDeleteDoc(docRef);
+                return { ok: true };
             } catch (err) {
-                console.error("Cloud Delete Error:", err);
+                console.error(`Cloud Delete Error (${collectionName}/${docId}):`, err);
+                return { ok: false, error: err?.code === 'permission-denied' ? 'Izin Firestore ditolak. Periksa Firestore Rules.' : 'Data belum berhasil dihapus dari cloud.' };
             }
         }
 
@@ -1591,7 +1601,7 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('edit-hero-theme').value = content.heroTheme;
         }
 
-        function saveRealtimeContent() {
+        async function saveRealtimeContent() {
             const current = getStored('hgn_content', defaultContent);
             const updated = {
                 ...current,
@@ -1604,22 +1614,19 @@ https://hgn.lampungbarat.go.id</textarea>
             };
             setStored('hgn_content', updated);
             applyContent();
-            
-            // Push Realtime Content to Cloud Settings
-            pushCloudDoc('settings', 'site_content', updated);
-
-            showToast("Logo & Informasi Web Berhasil Diperbarui!", "success");
+            showToast('Menyimpan logo dan informasi ke cloud…', 'warning');
+            const result = await pushCloudDoc('settings', 'site_content', updated);
+            if (result.ok) showToast('Logo & informasi berhasil tersimpan online dan dapat disinkronkan ke perangkat lain.', 'success');
+            else showToast(result.error, 'error');
         }
 
-        function saveScoresPdfUrl() {
+        async function saveScoresPdfUrl() {
             const current = getStored('hgn_content', defaultContent);
             current.scoresPdfUrl = document.getElementById('edit-scores-pdf-url').value;
             setStored('hgn_content', current);
-
-            // Push PDF Scores Matrix URL to Cloud Settings
-            pushCloudDoc('settings', 'site_content', current);
-
-            showToast("File Penilaian PDF Berhasil Diperbarui!", "success");
+            const result = await pushCloudDoc('settings', 'site_content', current);
+            if (result.ok) showToast('Tautan PDF berhasil tersimpan online.', 'success');
+            else showToast(result.error, 'error');
         }
 
         function escapeHtml(value) {
@@ -1711,7 +1718,7 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('category-title-input').focus();
         }
 
-        function saveCategoryAdmin(event) {
+        async function saveCategoryAdmin(event) {
             event.preventDefault();
             const cats = getStored('hgn_categories', defaultCategories);
             const indexValue = document.getElementById('category-edit-index').value;
@@ -1725,20 +1732,24 @@ https://hgn.lampungbarat.go.id</textarea>
             const category = { title, desc, checkmarks, icon };
             if (indexValue === '') cats.push(category); else cats[Number(indexValue)] = category;
             setStored('hgn_categories', cats);
-            pushCloudDoc('settings', 'categories_config', { items: cats, updatedAt: new Date().toISOString() });
-            renderCategories(); renderAdminCategories(); syncCategoryOptions(); resetCategoryAdminForm();
-            showToast(indexValue === '' ? 'Cabang lomba berhasil ditambahkan.' : 'Cabang lomba berhasil diperbarui.', 'success');
+            renderCategories(); renderAdminCategories(); syncCategoryOptions();
+            const result = await pushCloudDoc('settings', 'categories_config', { items: cats, updatedAt: new Date().toISOString() });
+            if (result.ok) {
+                resetCategoryAdminForm();
+                showToast(indexValue === '' ? 'Cabang lomba tersimpan online dan tampil di semua perangkat.' : 'Perubahan cabang lomba tersimpan online dan tersinkron.', 'success');
+            } else showToast(result.error + ' Cabang tetap ditampilkan di perangkat ini; setelah koneksi pulih, tekan Simpan kembali.', 'error');
         }
 
-        function deleteCategoryAdmin(index) {
+        async function deleteCategoryAdmin(index) {
             const cats = getStored('hgn_categories', defaultCategories);
             const category = cats[index]; if (!category) return;
             if (!confirm(`Hapus cabang "${category.title}" dari daftar aktif? Data pengumpulan lama tidak dihapus.`)) return;
             cats.splice(index, 1);
             setStored('hgn_categories', cats);
-            pushCloudDoc('settings', 'categories_config', { items: cats, updatedAt: new Date().toISOString() });
             renderCategories(); renderAdminCategories(); syncCategoryOptions();
-            showToast('Cabang lomba dihapus dari daftar aktif.', 'success');
+            const result = await pushCloudDoc('settings', 'categories_config', { items: cats, updatedAt: new Date().toISOString() });
+            if (result.ok) showToast('Cabang lomba berhasil dihapus dan perubahan tersimpan online.', 'success');
+            else showToast(result.error + ' Penghapusan belum tersinkron ke perangkat lain.', 'error');
         }
 
         function handleSelectCategory(catTitle) {
@@ -1817,15 +1828,17 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('timeline-stage-input').focus();
         }
 
-        function persistTimeline(timeline, message) {
+        async function persistTimeline(timeline, message) {
             setStored('hgn_timeline', timeline);
-            pushCloudDoc('settings', 'timeline_config', { items: timeline, updatedAt: new Date().toISOString() });
             renderTimeline();
             renderAdminTimeline();
-            showToast(message, 'success');
+            const result = await pushCloudDoc('settings', 'timeline_config', { items: timeline, updatedAt: new Date().toISOString() });
+            if (result.ok) showToast(message + ' Tersimpan online.', 'success');
+            else showToast(result.error + ' Jadwal belum tersinkron ke perangkat lain.', 'error');
+            return result;
         }
 
-        function saveTimelineStage(event) {
+        async function saveTimelineStage(event) {
             event.preventDefault();
             const timeline = getStored('hgn_timeline', defaultTimeline);
             const indexValue = document.getElementById('timeline-edit-index').value;
@@ -1841,25 +1854,25 @@ https://hgn.lampungbarat.go.id</textarea>
             }
             if (indexValue === '') timeline.push(item);
             else timeline[Number(indexValue)] = item;
-            persistTimeline(timeline, indexValue === '' ? 'Tahap dan jadwal berhasil ditambahkan.' : 'Tahap dan jadwal berhasil diperbarui.');
-            resetTimelineAdminForm();
+            const result = await persistTimeline(timeline, indexValue === '' ? 'Tahap dan jadwal berhasil ditambahkan.' : 'Tahap dan jadwal berhasil diperbarui.');
+            if (result.ok) resetTimelineAdminForm();
         }
 
-        function deleteTimelineStage(index) {
+        async function deleteTimelineStage(index) {
             const timeline = getStored('hgn_timeline', defaultTimeline);
             if (!timeline[index]) return;
             if (!confirm(`Hapus jadwal "${timeline[index].title}"?`)) return;
             timeline.splice(index, 1);
-            persistTimeline(timeline, 'Jadwal berhasil dihapus.');
-            resetTimelineAdminForm();
+            const result = await persistTimeline(timeline, 'Jadwal berhasil dihapus.');
+            if (result.ok) resetTimelineAdminForm();
         }
 
-        function moveTimelineStage(index, direction) {
+        async function moveTimelineStage(index, direction) {
             const timeline = getStored('hgn_timeline', defaultTimeline);
             const next = index + direction;
             if (next < 0 || next >= timeline.length) return;
             [timeline[index], timeline[next]] = [timeline[next], timeline[index]];
-            persistTimeline(timeline, 'Urutan tahap berhasil diperbarui.');
+            await persistTimeline(timeline, 'Urutan tahap berhasil diperbarui.');
         }
 
         let currentAnnStage = 'LOLOS_BERKAS';
