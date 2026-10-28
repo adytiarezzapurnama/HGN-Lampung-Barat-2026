@@ -512,20 +512,6 @@
                     <i class="fa-solid fa-pen-nib"></i> Edit Logo & Informasi Utama Web
                 </h3>
 
-                <section class="p-5 rounded-2xl bg-navy-950 border border-teal-500/30 space-y-4">
-                    <div>
-                        <h4 class="text-sm font-extrabold text-teal-300"><i class="fa-solid fa-images mr-2"></i>Manajemen Logo Tambahan</h4>
-                        <p class="text-xs text-slate-400 mt-1">Unggah beberapa logo yang akan tampil berjajar di bagian atas beranda, dekat judul acara. Maksimal 8 logo tambahan; gambar otomatis diperkecil agar aman disimpan di Firestore.</p>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div><label for="extra-logo-name" class="block text-xs font-semibold text-slate-200 mb-1">Nama logo / instansi</label><input id="extra-logo-name" maxlength="70" placeholder="Contoh: Pemerintah Kabupaten Lampung Barat" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5"></div>
-                        <div><label for="extra-logo-file" class="block text-xs font-semibold text-slate-200 mb-1">Pilih gambar (PNG/JPG/WebP, maks. 2 MB)</label><input type="file" id="extra-logo-file" accept="image/png,image/jpeg,image/webp" class="w-full bg-navy-900 border border-gold-500/30 text-slate-300 text-xs rounded-xl p-2"></div>
-                    </div>
-                    <button type="button" onclick="addExtraLogo()" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-extrabold"><i class="fa-solid fa-plus mr-1"></i>Tambah Logo</button>
-                    <div id="extra-logo-admin-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><p class="text-xs text-slate-400">Belum ada logo tambahan.</p></div>
-                    <button type="button" onclick="saveExtraLogoGallery()" class="px-4 py-2.5 rounded-xl bg-gold-gradient text-navy-950 text-xs font-extrabold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Simpan Galeri Logo ke Cloud</button>
-                </section>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- LOGO GTK UPLOAD & URL -->
                     <div class="space-y-4 p-4 rounded-xl bg-navy-950 border border-slate-800">
@@ -553,6 +539,53 @@
                             <label class="block text-xs font-semibold text-slate-200 mb-1">Atau gunakan URL gambar logo Dinas Pendidikan:</label>
                             <input type="url" id="edit-logo-disdik" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5">
                         </div>
+                    </div>
+
+                    <!-- MULTI LOGO MANAGEMENT: direct upload, saved in site_content -->
+                    <div class="space-y-4 p-4 rounded-xl bg-navy-950 border border-teal-500/30 md:col-span-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <h4 class="text-sm font-extrabold text-teal-200"><i class="fa-solid fa-images mr-2"></i>Manajemen Logo Tambahan</h4>
+                                <p class="text-xs text-slate-400 mt-1">Unggah logo dari komputer. Logo aktif tampil di bagian atas beranda dekat judul acara. Maksimal 8 logo tambahan.</p>
+                            </div>
+                            <span id="extra-logo-count" class="rounded-full bg-teal-400/10 text-teal-200 px-3 py-1 text-xs font-bold">0/8 logo</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-200 mb-1" for="extra-logo-name">Nama / identitas logo</label>
+                                <input id="extra-logo-name" type="text" maxlength="80" placeholder="Contoh: Logo Pemerintah Kabupaten" class="w-full bg-navy-900 border border-teal-500/30 text-white text-xs rounded-xl px-4 py-2.5">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-200 mb-1" for="extra-logo-file">Pilih gambar (PNG/JPG/WebP, maks. 2 MB)</label>
+                                <input id="extra-logo-file" type="file" accept="image/png,image/jpeg,image/webp" onchange="handleAdditionalLogoFile(event)" class="w-full bg-navy-900 border border-teal-500/30 text-slate-300 text-xs rounded-xl p-2">
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <img id="extra-logo-preview" alt="Pratinjau logo tambahan" class="hidden h-16 w-16 rounded-xl bg-white object-contain p-2 border border-slate-300">
+                            <button type="button" onclick="addAdditionalLogo()" class="px-4 py-2.5 rounded-xl bg-teal-400 text-navy-950 font-extrabold text-xs"><i class="fa-solid fa-plus mr-1"></i> Tambahkan Logo</button>
+                            <span class="text-[11px] text-slate-400">Logo baru akan disimpan bersama tombol “Simpan Perubahan Logo & Teks Web”.</span>
+                        </div>
+                        <div id="extra-logo-admin-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <p class="text-xs text-slate-400">Belum ada logo tambahan.</p>
+                        </div>
+                    </div>
+
+                    <!-- CONTACT PERSON MANAGEMENT -->
+                    <div class="space-y-4 p-4 rounded-xl bg-navy-950 border border-amber-500/30 md:col-span-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <h4 class="text-sm font-extrabold text-amber-200"><i class="fa-brands fa-whatsapp mr-2"></i>Manajemen Kontak Panitia</h4>
+                                <p class="text-xs text-slate-400 mt-1">Kontak yang aktif akan tampil di beranda. Admin dapat menambah, mengubah, mengurutkan, atau menghapus kontak.</p>
+                            </div>
+                            <span id="contact-admin-count" class="rounded-full bg-amber-400/10 text-amber-200 px-3 py-1 text-xs font-bold">0 kontak</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div><label for="new-contact-name" class="block text-xs font-semibold text-slate-200 mb-1">Nama panitia</label><input id="new-contact-name" type="text" maxlength="80" placeholder="Nama lengkap" class="w-full bg-navy-900 border border-amber-500/30 text-white text-xs rounded-xl px-4 py-2.5"></div>
+                            <div><label for="new-contact-phone" class="block text-xs font-semibold text-slate-200 mb-1">Nomor WhatsApp</label><input id="new-contact-phone" type="tel" maxlength="25" placeholder="08xxxxxxxxxx" class="w-full bg-navy-900 border border-amber-500/30 text-white text-xs rounded-xl px-4 py-2.5"></div>
+                            <div class="flex items-end"><button type="button" onclick="addPanitiaContact()" class="w-full px-4 py-2.5 rounded-xl bg-amber-400 text-navy-950 font-extrabold text-xs"><i class="fa-solid fa-plus mr-1"></i> Tambah Kontak</button></div>
+                        </div>
+                        <div id="contact-admin-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3"><p class="text-xs text-slate-400">Memuat kontak panitia...</p></div>
+                        <p class="text-[11px] text-slate-400">Setelah mengubah daftar, klik tombol utama “Simpan Perubahan Logo & Teks Web” di bawah untuk menyimpan ke cloud.</p>
                     </div>
 
                     <!-- TEXTS & LOCATIONS -->
@@ -810,7 +843,7 @@ https://hgn.lampungbarat.go.id</textarea>
                             <img id="hero-logo-gtk" src="https://placehold.co/100x100/0f172a/fbbf24?text=GTK" alt="Logo Komunitas GTK" class="w-20 h-20 object-contain rounded-xl" onerror="this.onerror=null; this.alt='Logo GTK tidak dapat dimuat';">
                         </div>
                     </div>
-                    <div id="hero-extra-logo-gallery" class="flex flex-wrap justify-center items-center gap-3 sm:gap-5 mb-8" aria-label="Logo instansi pendukung"></div>
+                    <div id="hero-extra-logos" class="flex flex-wrap justify-center items-center gap-3 mb-8" aria-label="Logo pendukung acara"></div>
 
                     <!-- Main Hero Header -->
                     <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-navy-950 mb-6 leading-tight">
@@ -839,25 +872,8 @@ https://hgn.lampungbarat.go.id</textarea>
                     <div class="max-w-3xl mx-auto mb-16 bg-navy-950 rounded-3xl p-6 sm:p-8 text-white border border-gold-500/30 shadow-xl">
                         <span class="text-xs font-bold text-gold-400 uppercase tracking-widest font-serif block mb-1">Pusat Bantuan & Layanan Panitia</span>
                         <h3 class="text-xl font-bold text-white mb-6">Contact Person Panitia Pelaksana</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <a href="https://wa.me/6285758941085" target="_blank" class="p-4 rounded-2xl bg-navy-900 border border-gold-500/20 hover:border-gold-400 transition-all flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
-                                    <i class="fa-brands fa-whatsapp"></i>
-                                </div>
-                                <div class="text-left">
-                                    <div class="text-xs font-bold text-white">Adytia Rezza Purnama</div>
-                                    <div class="text-xs text-gold-400">0857-5894-1085</div>
-                                </div>
-                            </a>
-                            <a href="https://wa.me/6285384499734" target="_blank" class="p-4 rounded-2xl bg-navy-900 border border-gold-500/20 hover:border-gold-400 transition-all flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0">
-                                    <i class="fa-brands fa-whatsapp"></i>
-                                </div>
-                                <div class="text-left">
-                                    <div class="text-xs font-bold text-white">Nunuk Nugraha</div>
-                                    <div class="text-xs text-gold-400">0853-8449-9734</div>
-                                </div>
-                            </a>
+                        <div id="public-panitia-contacts" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <p class="text-xs text-slate-300">Kontak panitia akan ditampilkan di sini.</p>
                         </div>
                     </div>
 
@@ -1283,6 +1299,11 @@ https://hgn.lampungbarat.go.id</textarea>
             heroTheme: 'Apresiasi dan Lomba Inovasi Pendidik Kabupaten Lampung Barat',
             logoGtkUrl: 'https://placehold.co/100x100/10253f/6ee7df?text=GTK',
             logoDisdikUrl: 'https://placehold.co/100x100/10253f/6ee7df?text=DISDIK',
+            extraLogos: [],
+            contacts: [
+                { id: 'contact-adytia', name: 'Adytia Rezza Purnama', phone: '0857-5894-1085', active: true },
+                { id: 'contact-nunuk', name: 'Nunuk Nugraha', phone: '0853-8449-9734', active: true }
+            ],
             juknisUrl: '', scoresPdfUrl: ''
         };
 
@@ -1332,17 +1353,17 @@ https://hgn.lampungbarat.go.id</textarea>
             const collection = window.fbCollection;
 
             // Listen only to explicitly public settings documents. Never read admin_config.
-            const publicSettings = ['site_content', 'lock_state', 'categories_config', 'timeline_config', 'site_logo_gallery'];
+            const publicSettings = ['site_content', 'lock_state', 'categories_config', 'timeline_config'];
             publicSettings.forEach((id) => {
                 const ref = doc(db, 'artifacts', appId, 'public', 'data', 'settings', id);
                 onSnapshot(ref, (snap) => {
                     if (!snap.exists()) return;
                     const data = snap.data();
-                    if (id === 'site_content') { setStored('hgn_content', data); applyContent(); }
-                    else if (id === 'site_logo_gallery') {
-                        const items = Array.isArray(data.items) ? data.items.slice(0, 8) : [];
-                        setStored('hgn_logo_gallery', items); renderExtraLogoGallery();
-                        if (window.__hgnIsAdmin) renderExtraLogoAdminList();
+                    if (id === 'site_content') {
+                        const mergedContent = { ...defaultContent, ...data };
+                        if (!Array.isArray(mergedContent.contacts)) mergedContent.contacts = defaultContent.contacts;
+                        setStored('hgn_content', mergedContent); applyContent();
+                        if (window.__hgnIsAdmin) renderPanitiaContactAdmin();
                     }
                     else if (id === 'lock_state') {
                         localStorage.setItem('hgn_registration_locked', data.locked ? 'true' : 'false');
@@ -1503,15 +1524,12 @@ https://hgn.lampungbarat.go.id</textarea>
             else setStored('hgn_timeline', upgradeTimelineList(getStored('hgn_timeline', defaultTimeline)));
             if (!localStorage.getItem('hgn_announcements')) setStored('hgn_announcements', defaultAnnouncements);
             if (!localStorage.getItem('hgn_content')) setStored('hgn_content', defaultContent);
-            if (!localStorage.getItem('hgn_logo_gallery')) setStored('hgn_logo_gallery', []);
             
             localStorage.removeItem('hgn_admin_pass'); // Kata sandi admin tidak lagi disimpan di browser.
             const legacyUsers = getStored('hgn_users', []);
             if (Array.isArray(legacyUsers)) setStored('hgn_users', legacyUsers.map(({password, ...u}) => u));
 
             applyContent();
-            renderExtraLogoGallery();
-            renderExtraLogoAdminList();
             startLiveClock();
             renderCategories();
             renderAdminCategories();
@@ -1724,6 +1742,123 @@ https://hgn.lampungbarat.go.id</textarea>
             reader.readAsDataURL(file);
         }
 
+        // Extra logos are stored as small, compressed data URLs in the existing site_content document.
+        // This avoids requiring Firebase Storage; keep images compact to respect Firestore's document limit.
+        let pendingAdditionalLogoData = '';
+        const MAX_EXTRA_LOGOS = 8;
+        function normalizeExtraLogos(items) {
+            return (Array.isArray(items) ? items : []).filter(x => x && typeof x.dataUrl === 'string' && x.dataUrl.startsWith('data:image/'))
+                .slice(0, MAX_EXTRA_LOGOS).map((x, i) => ({
+                    id: String(x.id || ('logo-' + i)), name: String(x.name || ('Logo ' + (i + 1))).slice(0, 80),
+                    dataUrl: x.dataUrl, active: x.active !== false
+                }));
+        }
+        function handleAdditionalLogoFile(event) {
+            const file = event.target.files && event.target.files[0];
+            pendingAdditionalLogoData = '';
+            const preview = document.getElementById('extra-logo-preview');
+            if (preview) preview.classList.add('hidden');
+            if (!file) return;
+            if (!['image/png','image/jpeg','image/webp'].includes(file.type)) {
+                showToast('Pilih gambar PNG, JPG, atau WebP.', 'warning'); event.target.value = ''; return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran logo maksimal 2 MB sebelum dikompres.', 'warning'); event.target.value = ''; return;
+            }
+            const reader = new FileReader();
+            reader.onerror = () => showToast('File logo tidak dapat dibaca.', 'warning');
+            reader.onload = ev => {
+                const img = new Image();
+                img.onerror = () => showToast('Gambar tidak dapat dibuka. Coba file gambar lain.', 'warning');
+                img.onload = () => {
+                    let side = 320, quality = 0.58, compressed = '';
+                    for (let attempt = 0; attempt < 7; attempt++) {
+                        const scale = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+                        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+                        const ctx = canvas.getContext('2d');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        compressed = canvas.toDataURL('image/webp', quality);
+                        if (compressed.length <= 36000) break;
+                        side = Math.max(120, Math.round(side * 0.78));
+                        quality = Math.max(0.32, quality - 0.05);
+                    }
+                    if (!compressed || compressed.length > 48000) {
+                        showToast('Logo masih terlalu besar setelah dikompres. Coba gambar yang lebih sederhana.', 'warning');
+                        event.target.value = ''; return;
+                    }
+                    pendingAdditionalLogoData = compressed;
+                    if (preview) { preview.src = compressed; preview.classList.remove('hidden'); }
+                    const nameInput = document.getElementById('extra-logo-name');
+                    if (nameInput && !nameInput.value.trim()) nameInput.value = file.name.replace(/\.[^.]+$/, '').slice(0, 80);
+                    showToast('Logo siap ditambahkan. Tekan “Tambahkan Logo”, lalu simpan perubahan.', 'success');
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        function addAdditionalLogo() {
+            const content = getStored('hgn_content', defaultContent);
+            const logos = normalizeExtraLogos(content.extraLogos);
+            if (logos.length >= MAX_EXTRA_LOGOS) { showToast('Maksimal 8 logo tambahan. Hapus logo yang tidak digunakan terlebih dahulu.', 'warning'); return; }
+            if (!pendingAdditionalLogoData) { showToast('Pilih file gambar logo terlebih dahulu.', 'warning'); return; }
+            const nameInput = document.getElementById('extra-logo-name');
+            const name = (nameInput?.value || '').trim();
+            if (!name) { showToast('Isi nama atau identitas logo terlebih dahulu.', 'warning'); nameInput?.focus(); return; }
+            logos.push({ id: 'logo-' + Date.now() + '-' + Math.random().toString(36).slice(2,7), name: name.slice(0,80), dataUrl: pendingAdditionalLogoData, active: true });
+            content.extraLogos = logos;
+            setStored('hgn_content', content);
+            pendingAdditionalLogoData = '';
+            document.getElementById('extra-logo-file').value = '';
+            document.getElementById('extra-logo-name').value = '';
+            document.getElementById('extra-logo-preview').classList.add('hidden');
+            renderAdditionalLogoAdmin(); applyContent();
+            showToast('Logo ditambahkan ke daftar. Tekan Simpan Perubahan Logo & Teks Web agar tersimpan online.', 'success');
+        }
+        function updateAdditionalLogo(id, field, value) {
+            const content = getStored('hgn_content', defaultContent);
+            content.extraLogos = normalizeExtraLogos(content.extraLogos).map(x => x.id === id ? {...x, [field]: field === 'name' ? String(value).slice(0,80) : !!value} : x);
+            setStored('hgn_content', content); renderAdditionalLogoAdmin(); applyContent();
+        }
+        function moveAdditionalLogo(id, direction) {
+            const content = getStored('hgn_content', defaultContent);
+            const logos = normalizeExtraLogos(content.extraLogos);
+            const index = logos.findIndex(x => x.id === id), next = index + direction;
+            if (index < 0 || next < 0 || next >= logos.length) return;
+            [logos[index], logos[next]] = [logos[next], logos[index]];
+            content.extraLogos = logos; setStored('hgn_content', content); renderAdditionalLogoAdmin(); applyContent();
+        }
+        function deleteAdditionalLogo(id) {
+            if (!confirm('Hapus logo tambahan ini? Perubahan akan berlaku setelah disimpan.')) return;
+            const content = getStored('hgn_content', defaultContent);
+            content.extraLogos = normalizeExtraLogos(content.extraLogos).filter(x => x.id !== id);
+            setStored('hgn_content', content); renderAdditionalLogoAdmin(); applyContent();
+            showToast('Logo dihapus dari daftar. Simpan perubahan agar penghapusan tersimpan online.', 'success');
+        }
+        function renderAdditionalLogoAdmin() {
+            const host = document.getElementById('extra-logo-admin-list');
+            if (!host) return;
+            const logos = normalizeExtraLogos(getStored('hgn_content', defaultContent).extraLogos);
+            const count = document.getElementById('extra-logo-count');
+            if (count) count.textContent = `${logos.length}/${MAX_EXTRA_LOGOS} logo`;
+            if (!logos.length) { host.innerHTML = '<p class="text-xs text-slate-400">Belum ada logo tambahan.</p>'; return; }
+            host.innerHTML = logos.map((logo, i) => `
+                <div class="flex items-center gap-3 rounded-xl border border-slate-700 bg-navy-900 p-3">
+                    <img src="${logo.dataUrl}" alt="${escapeHtml(logo.name)}" class="h-14 w-14 shrink-0 rounded-lg bg-white object-contain p-1">
+                    <div class="min-w-0 flex-1 space-y-2">
+                        <input type="text" maxlength="80" value="${escapeHtml(logo.name)}" aria-label="Nama logo" onchange="updateAdditionalLogo('${logo.id}','name',this.value)" class="w-full rounded-lg border border-slate-700 bg-navy-950 px-2 py-1.5 text-xs text-white">
+                        <label class="flex items-center gap-2 text-[11px] text-slate-300"><input type="checkbox" ${logo.active ? 'checked' : ''} onchange="updateAdditionalLogo('${logo.id}','active',this.checked)"> Tampilkan di beranda</label>
+                        <div class="flex flex-wrap gap-1">
+                            <button type="button" ${i===0?'disabled':''} onclick="moveAdditionalLogo('${logo.id}',-1)" class="hgn-btn-secondary rounded-lg disabled:opacity-30" aria-label="Geser logo ke kiri/atas"><i class="fa-solid fa-arrow-up"></i></button>
+                            <button type="button" ${i===logos.length-1?'disabled':''} onclick="moveAdditionalLogo('${logo.id}',1)" class="hgn-btn-secondary rounded-lg disabled:opacity-30" aria-label="Geser logo ke kanan/bawah"><i class="fa-solid fa-arrow-down"></i></button>
+                            <button type="button" onclick="deleteAdditionalLogo('${logo.id}')" class="hgn-btn-danger rounded-lg"><i class="fa-solid fa-trash mr-1"></i> Hapus</button>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
         function navigateTo(pageId) {
             document.querySelectorAll('.spa-page').forEach(p => p.classList.add('hidden'));
             const targetPage = document.getElementById(`page-${pageId}`);
@@ -1742,63 +1877,87 @@ https://hgn.lampungbarat.go.id</textarea>
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function renderExtraLogoGallery() {
-            const host = document.getElementById('hero-extra-logo-gallery');
+        const MAX_PANITIA_CONTACTS = 12;
+        function normalizePanitiaContacts(items) {
+            const source = Array.isArray(items) ? items : defaultContent.contacts;
+            return source.filter(x => x && String(x.name || '').trim() && String(x.phone || '').trim())
+                .slice(0, MAX_PANITIA_CONTACTS).map((x, i) => ({
+                    id: String(x.id || ('contact-' + i)),
+                    name: String(x.name || '').trim().slice(0, 80),
+                    phone: String(x.phone || '').trim().slice(0, 25),
+                    active: x.active !== false
+                }));
+        }
+        function phoneToWhatsApp(phone) {
+            let digits = String(phone || '').replace(/\D/g, '');
+            if (digits.startsWith('0')) digits = '62' + digits.slice(1);
+            else if (digits.startsWith('8')) digits = '62' + digits;
+            return digits;
+        }
+        function renderPublicPanitiaContacts(items) {
+            const host = document.getElementById('public-panitia-contacts');
             if (!host) return;
-            const items = getStored('hgn_logo_gallery', []).filter(item => item && item.active !== false && item.image).slice(0, 8);
-            host.innerHTML = items.map(item => `<div class="flex flex-col items-center gap-1 p-2 bg-white rounded-2xl border border-slate-200 shadow-sm" style="width:84px"><img src="${item.image}" alt="${escapeHtml(item.name || 'Logo instansi')}" loading="lazy" class="w-14 h-14 object-contain rounded-lg"><span class="text-[9px] leading-tight text-slate-700 font-bold text-center break-words">${escapeHtml(item.name || 'Logo')}</span></div>`).join('');
+            const contacts = normalizePanitiaContacts(items).filter(c => c.active);
+            if (!contacts.length) {
+                host.innerHTML = '<p class="text-xs text-slate-300">Kontak panitia belum tersedia. Silakan hubungi panitia melalui pengumuman resmi.</p>';
+                return;
+            }
+            host.innerHTML = contacts.map(c => {
+                const wa = phoneToWhatsApp(c.phone);
+                return `<a href="https://wa.me/${encodeURIComponent(wa)}" target="_blank" rel="noopener noreferrer" class="p-4 rounded-2xl bg-navy-900 border border-gold-500/20 hover:border-gold-400 transition-all flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl shrink-0"><i class="fa-brands fa-whatsapp"></i></div><div class="text-left min-w-0"><div class="text-xs font-bold text-white">${escapeHtml(c.name)}</div><div class="text-xs text-gold-400">${escapeHtml(c.phone)}</div></div></a>`;
+            }).join('');
         }
-
-        function renderExtraLogoAdminList() {
-            const host = document.getElementById('extra-logo-admin-list');
+        function renderPanitiaContactAdmin() {
+            const host = document.getElementById('contact-admin-list');
             if (!host) return;
-            const items = getStored('hgn_logo_gallery', []);
-            if (!items.length) { host.innerHTML = '<p class="text-xs text-slate-400">Belum ada logo tambahan. Pilih gambar dan klik Tambah Logo.</p>'; return; }
-            host.innerHTML = items.map((item, index) => `<article class="rounded-xl border border-slate-700 bg-navy-900 p-3 flex gap-3 items-center"><img src="${item.image}" alt="${escapeHtml(item.name || 'Logo')}" class="w-14 h-14 object-contain rounded-lg bg-white p-1 shrink-0"><div class="min-w-0 flex-1"><p class="text-xs font-bold text-white break-words">${escapeHtml(item.name || 'Logo tanpa nama')}</p><label class="mt-2 flex items-center gap-2 text-[11px] text-slate-300"><input type="checkbox" ${item.active === false ? '' : 'checked'} onchange="toggleExtraLogo(${index}, this.checked)">Tampilkan di beranda</label><div class="flex flex-wrap gap-1 mt-2"><button type="button" onclick="moveExtraLogo(${index},-1)" ${index===0?'disabled':''} class="px-2 py-1 rounded bg-slate-700 text-white text-[10px] disabled:opacity-30" aria-label="Geser logo ke kiri">←</button><button type="button" onclick="moveExtraLogo(${index},1)" ${index===items.length-1?'disabled':''} class="px-2 py-1 rounded bg-slate-700 text-white text-[10px] disabled:opacity-30" aria-label="Geser logo ke kanan">→</button><button type="button" onclick="deleteExtraLogo(${index})" class="px-2 py-1 rounded bg-rose-700 text-white text-[10px]">Hapus</button></div></div></article>`).join('');
+            const contacts = normalizePanitiaContacts(getStored('hgn_content', defaultContent).contacts);
+            const count = document.getElementById('contact-admin-count');
+            if (count) count.textContent = `${contacts.length}/${MAX_PANITIA_CONTACTS} kontak`;
+            if (!contacts.length) { host.innerHTML = '<p class="text-xs text-slate-400">Belum ada kontak panitia. Tambahkan melalui formulir di atas.</p>'; return; }
+            host.innerHTML = contacts.map((c, i) => `<div class="rounded-xl border border-slate-700 bg-navy-900 p-3 space-y-2"><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><div><label class="block text-[11px] text-slate-400 mb-1">Nama</label><input type="text" maxlength="80" value="${escapeHtml(c.name)}" onchange="updatePanitiaContact('${c.id}','name',this.value)" class="w-full rounded-lg border border-slate-700 bg-navy-950 px-2 py-2 text-xs text-white"></div><div><label class="block text-[11px] text-slate-400 mb-1">Nomor WhatsApp</label><input type="tel" maxlength="25" value="${escapeHtml(c.phone)}" onchange="updatePanitiaContact('${c.id}','phone',this.value)" class="w-full rounded-lg border border-slate-700 bg-navy-950 px-2 py-2 text-xs text-white"></div></div><label class="flex items-center gap-2 text-[11px] text-slate-300"><input type="checkbox" ${c.active ? 'checked' : ''} onchange="updatePanitiaContact('${c.id}','active',this.checked)"> Tampilkan di beranda</label><div class="flex gap-2"><button type="button" ${i===0?'disabled':''} onclick="movePanitiaContact('${c.id}',-1)" class="hgn-btn-secondary rounded-lg disabled:opacity-30" aria-label="Pindah kontak ke atas"><i class="fa-solid fa-arrow-up"></i></button><button type="button" ${i===contacts.length-1?'disabled':''} onclick="movePanitiaContact('${c.id}',1)" class="hgn-btn-secondary rounded-lg disabled:opacity-30" aria-label="Pindah kontak ke bawah"><i class="fa-solid fa-arrow-down"></i></button><button type="button" onclick="deletePanitiaContact('${c.id}')" class="hgn-btn-danger rounded-lg"><i class="fa-solid fa-trash mr-1"></i> Hapus</button></div></div>`).join('');
         }
-
-        function toggleExtraLogo(index, active) { const items = getStored('hgn_logo_gallery', []); if (!items[index]) return; items[index].active = !!active; setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery(); }
-        function moveExtraLogo(index, direction) { const items = getStored('hgn_logo_gallery', []); const next = index + direction; if (next < 0 || next >= items.length) return; [items[index], items[next]] = [items[next], items[index]]; setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery(); }
-        function deleteExtraLogo(index) { const items = getStored('hgn_logo_gallery', []); if (!items[index]) return; items.splice(index, 1); setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery(); showToast('Logo dihapus dari daftar sementara. Klik Simpan Galeri Logo ke Cloud untuk menerapkan.', 'warning'); }
-
-        async function addExtraLogo() {
-            const fileInput = document.getElementById('extra-logo-file');
-            const nameInput = document.getElementById('extra-logo-name');
-            const file = fileInput?.files?.[0];
-            const name = (nameInput?.value || '').trim();
-            const items = getStored('hgn_logo_gallery', []);
-            if (!name) { showToast('Isi nama logo terlebih dahulu.', 'warning'); return; }
-            if (!file) { showToast('Pilih file gambar logo terlebih dahulu.', 'warning'); return; }
-            if (!['image/png','image/jpeg','image/webp'].includes(file.type)) { showToast('Gunakan gambar PNG, JPG, atau WebP.', 'warning'); return; }
-            if (file.size > 2 * 1024 * 1024) { showToast('Ukuran gambar maksimal 2 MB.', 'warning'); return; }
-            if (items.length >= 8) { showToast('Maksimal 8 logo tambahan agar data tetap aman di Firestore.', 'warning'); return; }
-            try {
-                const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
-                const image = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = dataUrl; });
-                const maxSide = 240; const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
-                const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-                const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-                let compressed = canvas.toDataURL('image/webp', 0.55);
-                if (!compressed || compressed.length > 65000) compressed = canvas.toDataURL('image/jpeg', 0.48);
-                if (compressed.length > 90000) { showToast('Gambar masih terlalu besar setelah diperkecil. Pilih gambar logo yang lebih sederhana.', 'warning'); return; }
-                items.push({ id: 'logo_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7), name, image: compressed, active: true });
-                setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery();
-                nameInput.value = ''; fileInput.value = ''; showToast('Logo ditambahkan. Klik Simpan Galeri Logo ke Cloud agar tampil di semua perangkat.', 'success');
-            } catch (err) { console.error('Logo processing error:', err); showToast('Gambar gagal diproses. Coba file gambar lain.', 'error'); }
+        function updatePanitiaContact(id, field, value) {
+            const content = { ...defaultContent, ...getStored('hgn_content', defaultContent) };
+            const contacts = normalizePanitiaContacts(content.contacts);
+            const contact = contacts.find(c => c.id === id);
+            if (!contact || !['name','phone','active'].includes(field)) return;
+            contact[field] = field === 'active' ? Boolean(value) : String(value).trim();
+            content.contacts = normalizePanitiaContacts(contacts);
+            setStored('hgn_content', content); applyContent(); renderPanitiaContactAdmin();
         }
-
-        async function saveExtraLogoGallery() {
-            const items = getStored('hgn_logo_gallery', []);
-            const estimatedSize = JSON.stringify(items).length;
-            if (estimatedSize > 700000) { showToast('Total galeri logo terlalu besar. Hapus beberapa logo atau gunakan gambar lebih kecil.', 'warning'); return; }
-            showToast('Menyimpan galeri logo ke cloud…', 'warning');
-            const result = await pushCloudDoc('settings', 'site_logo_gallery', { items, updatedAt: new Date().toISOString() });
-            if (result.ok) { renderExtraLogoGallery(); showToast('Galeri logo berhasil disimpan dan disinkronkan ke perangkat pengunjung.', 'success'); }
-            else showToast(result.error, 'error');
+        function addPanitiaContact() {
+            const nameEl = document.getElementById('new-contact-name');
+            const phoneEl = document.getElementById('new-contact-phone');
+            const name = nameEl.value.trim(), phone = phoneEl.value.trim();
+            if (!name || !phone) { showToast('Isi nama panitia dan nomor WhatsApp terlebih dahulu.', 'warning'); return; }
+            if (!phoneToWhatsApp(phone) || phoneToWhatsApp(phone).length < 10) { showToast('Nomor WhatsApp tampaknya belum lengkap. Periksa kembali.', 'warning'); return; }
+            const content = { ...defaultContent, ...getStored('hgn_content', defaultContent) };
+            const contacts = normalizePanitiaContacts(content.contacts);
+            if (contacts.length >= MAX_PANITIA_CONTACTS) { showToast(`Maksimal ${MAX_PANITIA_CONTACTS} kontak panitia.`, 'warning'); return; }
+            contacts.push({ id: 'contact-' + Date.now().toString(36), name, phone, active: true });
+            content.contacts = contacts; setStored('hgn_content', content);
+            nameEl.value = ''; phoneEl.value = ''; applyContent(); renderPanitiaContactAdmin();
+            showToast('Kontak ditambahkan. Klik Simpan Perubahan Logo & Teks Web untuk menyimpan ke cloud.', 'success');
+        }
+        function deletePanitiaContact(id) {
+            if (!confirm('Hapus kontak panitia ini?')) return;
+            const content = { ...defaultContent, ...getStored('hgn_content', defaultContent) };
+            content.contacts = normalizePanitiaContacts(content.contacts).filter(c => c.id !== id);
+            setStored('hgn_content', content); applyContent(); renderPanitiaContactAdmin();
+            showToast('Kontak dihapus dari daftar. Klik Simpan Perubahan Logo & Teks Web untuk menyimpan ke cloud.', 'success');
+        }
+        function movePanitiaContact(id, direction) {
+            const content = { ...defaultContent, ...getStored('hgn_content', defaultContent) };
+            const contacts = normalizePanitiaContacts(content.contacts);
+            const from = contacts.findIndex(c => c.id === id), to = from + direction;
+            if (from < 0 || to < 0 || to >= contacts.length) return;
+            [contacts[from], contacts[to]] = [contacts[to], contacts[from]];
+            content.contacts = contacts; setStored('hgn_content', content); applyContent(); renderPanitiaContactAdmin();
         }
 
         function applyContent() {
-            const content = getStored('hgn_content', defaultContent);
+            const content = { ...defaultContent, ...getStored('hgn_content', defaultContent) };
+            if (!Array.isArray(content.contacts)) content.contacts = defaultContent.contacts;
             document.getElementById('announcement-text').innerText = content.announcement;
             document.getElementById('display-hero-title').innerText = content.heroTitle;
             document.getElementById('display-hero-theme').innerText = content.heroTheme;
@@ -1806,6 +1965,10 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('nav-logo-disdik').src = content.logoDisdikUrl;
             document.getElementById('hero-logo-gtk').src = content.logoGtkUrl;
             document.getElementById('hero-logo-disdik').src = content.logoDisdikUrl;
+            const extraHost = document.getElementById('hero-extra-logos');
+            const extraLogos = normalizeExtraLogos(content.extraLogos).filter(logo => logo.active);
+            if (extraHost) extraHost.innerHTML = extraLogos.map(logo => `<div class="flex flex-col items-center gap-1 p-2 bg-white rounded-xl border border-slate-200 shadow-sm" title="${escapeHtml(logo.name)}"><img src="${logo.dataUrl}" alt="${escapeHtml(logo.name)}" class="h-14 w-14 sm:h-16 sm:w-16 object-contain rounded-lg"><span class="max-w-24 text-[9px] sm:text-[10px] font-bold text-slate-600 text-center leading-tight">${escapeHtml(logo.name)}</span></div>`).join('');
+            renderPublicPanitiaContacts(content.contacts);
             const previewGtk = document.getElementById('preview-logo-gtk');
             const previewDisdik = document.getElementById('preview-logo-disdik');
             if (previewGtk && content.logoGtkUrl) { previewGtk.src = content.logoGtkUrl; previewGtk.classList.remove('hidden'); }
@@ -1820,7 +1983,8 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('edit-announcement').value = content.announcement;
             document.getElementById('edit-hero-title').value = content.heroTitle;
             document.getElementById('edit-hero-theme').value = content.heroTheme;
-            renderExtraLogoGallery();
+            renderAdditionalLogoAdmin();
+            renderPanitiaContactAdmin();
         }
 
         async function saveRealtimeContent() {
@@ -1829,6 +1993,8 @@ https://hgn.lampungbarat.go.id</textarea>
                 ...current,
                 logoGtkUrl: document.getElementById('edit-logo-gtk').value,
                 logoDisdikUrl: document.getElementById('edit-logo-disdik').value,
+                extraLogos: normalizeExtraLogos(current.extraLogos),
+                contacts: normalizePanitiaContacts(current.contacts),
                 juknisUrl: document.getElementById('edit-juknis-url').value,
                 announcement: document.getElementById('edit-announcement').value,
                 heroTitle: document.getElementById('edit-hero-title').value,
