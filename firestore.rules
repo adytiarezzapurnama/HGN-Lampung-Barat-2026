@@ -1,0 +1,145 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.uid == 'qMepfpYhfqPLTE47eysdUlwoWbj2';
+    }
+
+    function validCategoryGroup(group) {
+      return group in ['GTK', 'OLAHRAGA', 'SENI'];
+    }
+
+    match /artifacts/hgn-pgri-lampungbarat-2026/public/data/settings/{settingId} {
+      // Data konfigurasi publik saja; dokumen sensitif tidak termasuk daftar ini.
+      allow read: if isAdmin() || settingId in [
+        'site_content', 'site_logo_gallery', 'lock_state', 'categories_config',
+        'timeline_config', 'category_juknis'
+      ];
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /artifacts/hgn-pgri-lampungbarat-2026/public/data/announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /artifacts/hgn-pgri-lampungbarat-2026/public/data/users/{userId} {
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow list: if isAdmin();
+
+      // Profil tidak boleh menyimpan kata sandi. Autentikasi disimpan oleh Firebase Auth.
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.id == userId
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'PENDING'
+        && !('password' in request.resource.data)
+        && request.resource.data.keys().hasOnly([
+          'id', 'name', 'ttl', 'nip', 'pangkat', 'statusPegawai', 'pendidikan',
+          'masaKerja', 'mapel', 'school', 'jenjang', 'kecamatan', 'alamatSekolah',
+          'phone', 'judulKarya', 'email', 'status', 'created_at',
+          'competitionCategory', 'categoryGroup', 'registrationType',
+          'standName', 'standTheme', 'members', 'coordinator'
+        ]);
+      allow update, delete: if isAdmin();
+    }
+
+    match /artifacts/hgn-pgri-lampungbarat-2026/public/data/submissions/{submissionId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && exists(/databases/$(database)/documents/artifacts/hgn-pgri-lampungbarat-2026/public/data/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/artifacts/hgn-pgri-lampungbarat-2026/public/data/users/$(request.auth.uid)).data.status == 'VERIFIED'
+        && request.resource.data.id == submissionId
+        && request.resource.data.reviewStatus == 'BELUM_DINILAI'
+        && request.resource.data.userName is string
+        && request.resource.data.userName.size() <= 120
+        && request.resource.data.userSchool is string
+        && request.resource.data.userSchool.size() <= 200
+        && request.resource.data.category is string
+        && request.resource.data.category.size() <= 100
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 300
+        && request.resource.data.driveUrl is string
+        && request.resource.data.driveUrl.size() <= 2048
+        && request.resource.data.keys().hasOnly([
+          'id', 'userId', 'userName', 'userSchool', 'category', 'title', 'driveUrl', 'reviewStatus', 'createdAt'
+        ]);
+      allow update, delete: if isAdmin();
+    }
+
+    // Data pendaftaran lengkap (termasuk kontak dan anggota) tidak dibaca publik.
+    match /artifacts/hgn-pgri-lampungbarat-2026/public/data/event_registrations/{registrationId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.id == registrationId
+        && (
+          (
+            request.resource.data.registrationType in ['gtk', 'stand']
+            && request.resource.data.userId == request.auth.uid
+            && exists(/databases/$(database)/documents/artifacts/hgn-pgri-lampungbarat-2026/public/data/users/$(request.auth.uid))
+          )
+          ||
+          (
+            request.resource.data.registrationType in ['sport', 'performance']
+            && request.resource.data.category is string
+            && request.resource.data.category.size() <= 100
+            && request.resource.data.displayName is string
+            && request.resource.data.displayName.size() <= 200
+          )
+        )
+        && validCategoryGroup(request.resource.data.categoryGroup)
+        && (
+          (request.resource.data.registrationType == 'gtk' && request.resource.data.status in ['PENDING', 'TERDAFTAR'])
+          ||
+          (request.resource.data.registrationType == 'stand' && request.resource.data.status == 'PENDING')
+          ||
+          (request.resource.data.registrationType in ['sport', 'performance'] && request.resource.data.status == 'TERDAFTAR')
+        )
+        && request.resource.data.keys().hasOnly([
+          'id', 'userId', 'ownerUid', 'registrationType', 'categoryGroup', 'category',
+          'displayName', 'teamName', 'standName', 'school', 'schoolList', 'kecamatan',
+          'coordinator', 'phone', 'members', 'status', 'createdAt', 'email', 'updatedAt'
+        ]);
+      allow update, delete: if isAdmin();
+    }
+
+    // Ringkasan aman untuk daftar publik; nomor telepon, email, dan rincian anggota
+    // tidak disimpan dalam koleksi publik ini.
+    match /artifacts/hgn-pgri-lampungbarat-2026/public/data/public_registrations/{registrationId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.id == registrationId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.registrationType in ['gtk', 'stand', 'sport', 'performance']
+        && validCategoryGroup(request.resource.data.categoryGroup)
+        && request.resource.data.category is string
+        && request.resource.data.category.size() <= 100
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 200
+        && (
+          (request.resource.data.registrationType == 'gtk' && request.resource.data.status in ['PENDING', 'TERDAFTAR'])
+          ||
+          (request.resource.data.registrationType == 'stand' && request.resource.data.status == 'PENDING')
+          ||
+          (request.resource.data.registrationType in ['sport', 'performance'] && request.resource.data.status == 'TERDAFTAR')
+        )
+        && request.resource.data.keys().hasOnly([
+          'id', 'ownerUid', 'registrationType', 'categoryGroup', 'category',
+          'displayName', 'school', 'kecamatan', 'status', 'createdAt', 'updatedAt'
+        ]);
+      allow update, delete: if isAdmin();
+    }
+
+    // Semua jalur lain ditolak secara default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

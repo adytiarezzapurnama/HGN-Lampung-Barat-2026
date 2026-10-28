@@ -1,0 +1,4 @@
+HGN & HUT PGRI Ke-81 Kabupaten Lampung Barat
+Paket upgrade: 2026 + Manajemen Logo Tambahan
+Fitur logo tambahan: upload langsung dari komputer, maksimal 8 logo, kompres otomatis, urutan/tampil/nonaktif/hapus, sinkronisasi Firestore.
+Catatan: uji sintaks statis dilakukan; pengujian langsung pada proyek Firebase pengguna tetap perlu dilakukan setelah deploy.
