@@ -17,7 +17,7 @@
     <!-- FIREBASE CLOUD DATABASE SDK (CDN) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global Firebase Configuration Setup
@@ -60,6 +60,7 @@
         window.fbSignInWithEmailAndPassword = signInWithEmailAndPassword;
         window.fbCreateUserWithEmailAndPassword = createUserWithEmailAndPassword;
         window.fbSignOut = signOut;
+        window.fbSignInAnonymously = signInAnonymously;
 
         // Public content uses read-only Firestore rules. Admin/participant access must
         // authenticate with Firebase Email/Password; no anonymous admin session is created.
@@ -315,7 +316,7 @@
                     <div id="stat-verified-users" class="text-2xl sm:text-3xl font-extrabold text-emerald-400 mt-1">0</div>
                 </div>
                 <div class="p-5 rounded-2xl bg-navy-900 border border-sky-500/30 bg-sky-500/5">
-                    <div class="text-sky-400 text-xs font-medium">Total Berkas Masuk</div>
+                    <div class="text-sky-400 text-xs font-medium">Total Berkas / Pendaftaran</div>
                     <div id="stat-total-submissions" class="text-2xl sm:text-3xl font-extrabold text-sky-400 mt-1">0</div>
                 </div>
                 <div class="p-5 rounded-2xl bg-navy-900 border border-gold-500/30">
@@ -331,6 +332,9 @@
                 </button>
                 <button onclick="switchAdminTab('submissions')" id="tab-btn-submissions" class="px-4 py-2.5 rounded-t-xl font-bold bg-navy-900 text-slate-300 hover:text-white flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-folder-open"></i> Kelola Bahan Lomba
+                </button>
+                <button onclick="switchAdminTab('registrations'); renderAdminRegistrations()" id="tab-btn-registrations" class="px-4 py-2.5 rounded-t-xl font-bold bg-navy-900 text-slate-300 hover:text-white flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-clipboard-list"></i> Pendaftaran Tim
                 </button>
                 <button onclick="switchAdminTab('categories'); renderAdminCategories()" id="tab-btn-categories" class="px-4 py-2.5 rounded-t-xl font-bold bg-navy-900 text-slate-300 hover:text-white flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-layer-group"></i> Kelola Cabang Lomba
@@ -350,6 +354,24 @@
                 <button onclick="switchAdminTab('promotions')" id="tab-btn-promotions" class="px-4 py-2.5 rounded-t-xl font-bold bg-navy-900 text-gold-400 hover:text-gold-300 flex items-center gap-2 whitespace-nowrap">
                     <i class="fa-solid fa-bullhorn"></i> Promosi Panitia
                 </button>
+            </div>
+
+            <!-- ADMIN TAB: PENDAFTARAN TIM OLAHRAGA, SENI, DAN STAN -->
+            <div id="admin-tab-registrations" class="hidden space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl border border-gold-500/20 bg-navy-900 p-4">
+                    <div><h3 class="text-lg font-extrabold text-gold-300">Pendaftaran per Cabang Lomba</h3><p class="text-xs text-slate-400 mt-1">Data diurutkan berdasarkan waktu pendaftaran terbaru.</p></div>
+                    <div class="flex flex-wrap gap-2">
+                        <select id="event-registration-filter" onchange="renderAdminRegistrations()" class="bg-navy-950 border border-gold-500/30 text-white text-xs rounded-lg px-3 py-2"><option value="ALL">Semua Cabang</option></select>
+                        <button onclick="exportEventRegistrationsCSV('ALL')" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold"><i class="fa-solid fa-download mr-1"></i>Ekspor Semua CSV</button>
+                        <button onclick="exportEventRegistrationsCSV(document.getElementById('event-registration-filter').value)" class="px-3 py-2 rounded-lg bg-teal-600 text-white text-xs font-bold"><i class="fa-solid fa-file-csv mr-1"></i>Ekspor Filter CSV</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto rounded-2xl border border-gold-500/20 bg-navy-900">
+                    <table class="w-full text-left text-xs text-slate-200">
+                        <thead class="bg-navy-950 text-gold-300 uppercase tracking-wider"><tr><th class="p-3">Waktu</th><th class="p-3">Kategori</th><th class="p-3">Cabang</th><th class="p-3">Nama / Tim / Stan</th><th class="p-3">Sekolah</th><th class="p-3">Kecamatan</th><th class="p-3">Koordinator</th><th class="p-3">Anggota</th><th class="p-3">Status</th><th class="p-3">Kelola</th></tr></thead>
+                        <tbody id="event-registrations-tbody"><tr><td colspan="10" class="p-5 text-center text-slate-400">Belum ada data pendaftaran tim.</td></tr></tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- ADMIN TAB 1: VERIFIKASI AKUN & PASSWORD PESERTA -->
@@ -442,7 +464,11 @@
                             <div class="hgn-admin-field"><label for="category-title-input">Nama cabang lomba *</label><input id="category-title-input" required maxlength="100" placeholder="Contoh: Guru Berprestasi"></div>
                             <div class="hgn-admin-field"><label for="category-desc-input">Deskripsi singkat *</label><textarea id="category-desc-input" required rows="3" maxlength="500" placeholder="Jelaskan tujuan atau karya yang dikumpulkan"></textarea></div>
                             <div class="hgn-admin-field"><label for="category-requirements-input">Persyaratan / jenis berkas (satu item per baris) *</label><textarea id="category-requirements-input" required rows="4" placeholder="Portofolio&#10;Best Practice"></textarea></div>
-                            <div class="hgn-admin-field"><label for="category-icon-input">Ikon cabang lomba</label><select id="category-icon-input"><option value="fa-trophy">Piala</option><option value="fa-lightbulb">Inovasi</option><option value="fa-book-open">Buku / Esai</option><option value="fa-chalkboard-user">Kepala Sekolah / Mengajar</option><option value="fa-video">Video</option><option value="fa-pen-nib">Menulis</option><option value="fa-star">Apresiasi</option><option value="fa-medal">Medali</option></select></div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="hgn-admin-field"><label for="category-group-input">Kategori lomba *</label><select id="category-group-input" required><option value="GTK">Kategori Lomba GTK</option><option value="OLAHRAGA">Kategori Lomba Olahraga</option><option value="SENI">Kategori Lomba Seni Pertunjukan</option></select></div>
+                                <div class="hgn-admin-field"><label for="category-formtype-input">Jenis formulir *</label><select id="category-formtype-input" required><option value="gtk">Formulir GTK (login & verifikasi)</option><option value="stand">Stan Pendidikan (login & verifikasi)</option><option value="sport">Tim olahraga (tanpa login)</option><option value="performance">Regu seni pertunjukan (tanpa login)</option></select></div>
+                            </div>
+                            <div class="hgn-admin-field"><label for="category-icon-input">Ikon cabang lomba</label><select id="category-icon-input"><option value="fa-trophy">Piala</option><option value="fa-lightbulb">Inovasi</option><option value="fa-book-open">Buku / Esai</option><option value="fa-chalkboard-user">Kepala Sekolah / Mengajar</option><option value="fa-video">Video</option><option value="fa-pen-nib">Menulis</option><option value="fa-star">Apresiasi</option><option value="fa-medal">Medali</option><option value="fa-store">Stan / Pameran</option><option value="fa-people-group">Komunitas / Tim</option><option value="fa-volleyball">Voli</option><option value="fa-futbol">Futsal</option><option value="fa-drum">Drumband</option></select></div>
                             <div class="flex flex-wrap gap-2 pt-1"><button id="category-save-button" type="submit" class="px-5 py-3 bg-gold-gradient text-navy-950 font-extrabold text-xs"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Cabang</button><button type="button" onclick="resetCategoryAdminForm()" class="hgn-btn-secondary">Bersihkan Form</button></div>
                             <p class="text-[10px] text-slate-400 leading-relaxed">Catatan: menghapus cabang tidak menghapus data pengumpulan lama; nama cabang yang tersimpan pada data lama tetap dipertahankan.</p>
                         </form>
@@ -465,6 +491,7 @@
                         <h4 id="timeline-form-heading" class="text-sm font-extrabold text-white mb-4">Tambah Tahap / Jadwal</h4>
                         <form id="timeline-admin-form" onsubmit="saveTimelineStage(event)" class="space-y-4">
                             <input type="hidden" id="timeline-edit-index" value="">
+                            <div class="hgn-admin-field"><label for="timeline-group-input">Kategori timeline *</label><select id="timeline-group-input" required><option value="GTK">Kategori Lomba GTK</option><option value="OLAHRAGA">Kategori Lomba Olahraga</option><option value="SENI">Kategori Lomba Seni Pertunjukan</option></select></div>
                             <div class="hgn-admin-field"><label for="timeline-stage-input">Label tahap *</label><input id="timeline-stage-input" required maxlength="50" placeholder="Contoh: TAHAP 1"></div>
                             <div class="hgn-admin-field"><label for="timeline-title-input">Nama kegiatan *</label><input id="timeline-title-input" required maxlength="150" placeholder="Contoh: Pendaftaran dan Pengumpulan Berkas"></div>
                             <div class="hgn-admin-field"><label for="timeline-date-input">Tanggal / rentang waktu *</label><input id="timeline-date-input" required maxlength="100" placeholder="Contoh: 1–10 November 2026"></div>
@@ -484,6 +511,20 @@
                 <h3 class="text-lg font-bold text-gold-400 flex items-center gap-2 border-b border-slate-800 pb-3">
                     <i class="fa-solid fa-pen-nib"></i> Edit Logo & Informasi Utama Web
                 </h3>
+
+                <section class="p-5 rounded-2xl bg-navy-950 border border-teal-500/30 space-y-4">
+                    <div>
+                        <h4 class="text-sm font-extrabold text-teal-300"><i class="fa-solid fa-images mr-2"></i>Manajemen Logo Tambahan</h4>
+                        <p class="text-xs text-slate-400 mt-1">Unggah beberapa logo yang akan tampil berjajar di bagian atas beranda, dekat judul acara. Maksimal 8 logo tambahan; gambar otomatis diperkecil agar aman disimpan di Firestore.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div><label for="extra-logo-name" class="block text-xs font-semibold text-slate-200 mb-1">Nama logo / instansi</label><input id="extra-logo-name" maxlength="70" placeholder="Contoh: Pemerintah Kabupaten Lampung Barat" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5"></div>
+                        <div><label for="extra-logo-file" class="block text-xs font-semibold text-slate-200 mb-1">Pilih gambar (PNG/JPG/WebP, maks. 2 MB)</label><input type="file" id="extra-logo-file" accept="image/png,image/jpeg,image/webp" class="w-full bg-navy-900 border border-gold-500/30 text-slate-300 text-xs rounded-xl p-2"></div>
+                    </div>
+                    <button type="button" onclick="addExtraLogo()" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-extrabold"><i class="fa-solid fa-plus mr-1"></i>Tambah Logo</button>
+                    <div id="extra-logo-admin-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><p class="text-xs text-slate-400">Belum ada logo tambahan.</p></div>
+                    <button type="button" onclick="saveExtraLogoGallery()" class="px-4 py-2.5 rounded-xl bg-gold-gradient text-navy-950 text-xs font-extrabold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Simpan Galeri Logo ke Cloud</button>
+                </section>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- LOGO GTK UPLOAD & URL -->
@@ -519,6 +560,13 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-200 mb-1">URL / Link File Juknis PDF *</label>
                             <input type="url" id="edit-juknis-url" placeholder="https://drive.google.com/file/d/xxxx/view" class="w-full bg-navy-950 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5">
+                        </div>
+                        <div class="p-4 rounded-xl border border-teal-500/20 bg-navy-950 space-y-3">
+                            <div class="text-xs font-extrabold text-teal-300 uppercase tracking-wider">Juknis per kategori</div>
+                            <div><label class="block text-xs font-semibold text-slate-200 mb-1">Kategori GTK</label><input type="url" id="juknis-gtk-url" placeholder="Link juknis GTK" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5"></div>
+                            <div><label class="block text-xs font-semibold text-slate-200 mb-1">Kategori Olahraga</label><input type="url" id="juknis-olahraga-url" placeholder="Link juknis Olahraga" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5"></div>
+                            <div><label class="block text-xs font-semibold text-slate-200 mb-1">Kategori Seni Pertunjukan</label><input type="url" id="juknis-seni-url" placeholder="Link juknis Seni Pertunjukan" class="w-full bg-navy-900 border border-gold-500/30 text-white text-xs rounded-xl px-4 py-2.5"></div>
+                            <button type="button" onclick="saveCategoryJuknis()" class="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold">Simpan Juknis Kategori</button>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-200 mb-1">Pengumuman Top Bar</label>
@@ -672,11 +720,21 @@ Komunitas GTK & Dinas Pendidikan dan Kebudayaan Kabupaten Lampung Barat
 Mengundang Pendidik & Kepala Sekolah se-Lampung Barat:
 "APRESIASI & LOMBA INOVASI PENDIDIK"
 
-Cabang Lomba:
-1. Guru Berprestasi (✓ Portofolio | ✓ Best Practice)
-2. Guru Inovasi (✓ Narasi | ✓ Video)
-3. Kepala Sekolah Inovasi (✓ Narasi | ✓ Video)
-4. Lomba Menulis Esai (✓ Naskah Esai 1000-1500 Kata)
+CABANG LOMBA GTK:
+- Guru Berprestasi
+- Guru Inovasi
+- Kepala Sekolah Inovasi
+- Menulis Esai dan Jurnal
+- Stan Pendidikan dan Inovasi
+- Komunitas Belajar
+
+CABANG OLAHRAGA:
+- Voli GTK Putra
+- Voli GTK Putri
+- Futsal GTK Putra
+
+CABANG SENI PERTUNJUKAN:
+- Drumband
 
 Pendaftaran & Pengumpulan Berkas Melalui Web Resmi.
 Informasi Juknis & Pendaftaran: https://hgn.lampungbarat.go.id
@@ -695,9 +753,12 @@ Contact Person Panitia:
 
 Dinas Pendidikan dan Kebudayaan Lampung Barat berkolaborasi dengan Komunitas GTK menyelenggarakan Semarak Hari Guru Nasional & HUT PGRI Ke-81.
 
+Kategori GTK: Guru Berprestasi, Guru Inovasi, Kepala Sekolah Inovasi, Menulis Esai, Menulis Jurnal, Stan Pendidikan dan Inovasi, Komunitas Belajar.
+Kategori Olahraga: Voli GTK Putra, Voli GTK Putri, Futsal GTK Putra.
+Kategori Seni Pertunjukan: Drumband.
+
 Timeline Penting:
-- Pendaftaran & Unggah Berkas: 5 - 15 November 2026
-- Puncak Anugerah: 25 November 2026
+- Jadwal mengikuti timeline pada website sesuai kategori lomba.
 
 Contact Person Panitia:
 - Adytia Rezza Purnama (085758941085)
@@ -726,6 +787,19 @@ https://hgn.lampungbarat.go.id</textarea>
                         <span>Kolaborasi Dinas Pendidikan dan Kebudayaan Lampung Barat & Komunitas GTK</span>
                     </div>
 
+                    <div class="mx-auto mb-7 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
+                        <div class="rounded-2xl border border-slate-200 bg-white/90 px-5 py-3 shadow-sm">
+                            <div class="text-[10px] uppercase tracking-widest font-extrabold text-amber-700"><i class="fa-regular fa-clock mr-1"></i> Jam Lampung Barat</div>
+                            <div id="live-clock" class="text-2xl font-extrabold text-navy-950 mt-1">--:--:--</div>
+                            <div id="live-date" class="text-xs text-slate-500 mt-1">Memuat tanggal…</div>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white/90 px-5 py-3 shadow-sm">
+                            <div class="text-[10px] uppercase tracking-widest font-extrabold text-amber-700"><i class="fa-regular fa-calendar-days mr-1"></i> Kalender</div>
+                            <div id="live-calendar" class="text-sm font-bold text-navy-950 mt-2">Memuat kalender…</div>
+                            <div class="text-[10px] text-slate-500 mt-1">Waktu Indonesia Barat (WIB)</div>
+                        </div>
+                    </div>
+
                     <!-- Dynamic Logos Header Display -->
                     <div class="flex justify-center items-center gap-6 mb-8">
                         <div class="p-2 bg-white rounded-2xl border border-slate-200 shadow-md">
@@ -736,6 +810,7 @@ https://hgn.lampungbarat.go.id</textarea>
                             <img id="hero-logo-gtk" src="https://placehold.co/100x100/0f172a/fbbf24?text=GTK" alt="Logo Komunitas GTK" class="w-20 h-20 object-contain rounded-xl" onerror="this.onerror=null; this.alt='Logo GTK tidak dapat dimuat';">
                         </div>
                     </div>
+                    <div id="hero-extra-logo-gallery" class="flex flex-wrap justify-center items-center gap-3 sm:gap-5 mb-8" aria-label="Logo instansi pendukung"></div>
 
                     <!-- Main Hero Header -->
                     <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-navy-950 mb-6 leading-tight">
@@ -789,8 +864,8 @@ https://hgn.lampungbarat.go.id</textarea>
                     <!-- Highlight Grid -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-10 border-t border-slate-200">
                         <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
-                            <div class="text-2xl font-extrabold text-amber-600">7</div>
-                            <div class="text-xs text-slate-700 mt-1 font-bold">Cabang Lomba Utama</div>
+                            <div id="stat-public-category-count" class="text-2xl font-extrabold text-amber-600">11</div>
+                            <div class="text-xs text-slate-700 mt-1 font-bold">Cabang Lomba Aktif</div>
                         </div>
                         <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
                             <div class="text-2xl font-extrabold text-amber-600">15</div>
@@ -1181,19 +1256,27 @@ https://hgn.lampungbarat.go.id</textarea>
     <script>
         // Default data used when this site is opened for the first time.
         const defaultCategories = [
-            { title: 'Guru Berprestasi', desc: 'Apresiasi bagi pendidik yang menunjukkan kinerja, dedikasi, dan praktik baik pembelajaran.', icon: 'fa-trophy', checkmarks: ['Portofolio', 'Best Practice'] },
-            { title: 'Guru Inovasi', desc: 'Ruang berbagi gagasan dan karya inovatif untuk meningkatkan mutu pembelajaran.', icon: 'fa-lightbulb', checkmarks: ['Narasi Inovasi', 'Video'] },
-            { title: 'Kepala Sekolah Inovasi', desc: 'Apresiasi inovasi kepemimpinan dan pengembangan satuan pendidikan.', icon: 'fa-chalkboard-user', checkmarks: ['Narasi Inovasi', 'Video'] },
-            { title: 'Lomba Menulis Esai', desc: 'Ajang menuangkan gagasan pendidikan melalui tulisan yang inspiratif dan solutif.', icon: 'fa-book-open', checkmarks: ['Naskah Esai 1000–1500 Kata'] }
+            { title: 'Guru Berprestasi', desc: 'Apresiasi bagi pendidik yang menunjukkan kinerja, dedikasi, dan praktik baik pembelajaran.', icon: 'fa-trophy', checkmarks: ['Portofolio', 'Best Practice'], categoryGroup: 'GTK', formType: 'gtk' },
+            { title: 'Guru Inovasi', desc: 'Ruang berbagi gagasan dan karya inovatif untuk meningkatkan mutu pembelajaran.', icon: 'fa-lightbulb', checkmarks: ['Narasi Inovasi', 'Video'], categoryGroup: 'GTK', formType: 'gtk' },
+            { title: 'Kepala Sekolah Inovasi', desc: 'Apresiasi inovasi kepemimpinan dan pengembangan satuan pendidikan.', icon: 'fa-chalkboard-user', checkmarks: ['Narasi Inovasi', 'Video'], categoryGroup: 'GTK', formType: 'gtk' },
+            { title: 'Lomba Menulis Esai', desc: 'Ajang menuangkan gagasan pendidikan melalui tulisan yang inspiratif dan solutif.', icon: 'fa-book-open', checkmarks: ['Naskah esai'], categoryGroup: 'GTK', formType: 'gtk' },
+            { title: 'Lomba Menulis Jurnal', desc: 'Apresiasi karya tulis ilmiah dan jurnal pendidikan.', icon: 'fa-book-open', checkmarks: ['Naskah jurnal'], categoryGroup: 'GTK', formType: 'gtk' },
+            { title: 'Lomba Stan Pendidikan dan Inovasi', desc: 'Pameran praktik baik, produk, dan inovasi pendidikan dari satuan pendidikan.', icon: 'fa-store', checkmarks: ['Profil stan', 'Daftar pengelola'], categoryGroup: 'GTK', formType: 'stand' },
+            { title: 'Lomba Komunitas Belajar', desc: 'Apresiasi komunitas belajar yang aktif berbagi praktik baik.', icon: 'fa-people-group', checkmarks: ['Profil komunitas', 'Dokumentasi kegiatan'], categoryGroup: 'GTK', formType: 'gtk' },
+            { title: 'Lomba Voli GTK Putra', desc: 'Kompetisi bola voli GTK putra tingkat Kabupaten Lampung Barat.', icon: 'fa-volleyball', checkmarks: ['Data tim dan anggota'], categoryGroup: 'OLAHRAGA', formType: 'sport' },
+            { title: 'Lomba Voli GTK Putri', desc: 'Kompetisi bola voli GTK putri tingkat Kabupaten Lampung Barat.', icon: 'fa-volleyball', checkmarks: ['Data tim dan anggota'], categoryGroup: 'OLAHRAGA', formType: 'sport' },
+            { title: 'Lomba Futsal GTK Putra', desc: 'Kompetisi futsal GTK putra tingkat Kabupaten Lampung Barat.', icon: 'fa-futbol', checkmarks: ['Data tim dan anggota'], categoryGroup: 'OLAHRAGA', formType: 'sport' },
+            { title: 'Lomba Drumband', desc: 'Kompetisi seni pertunjukan drumband antar satuan pendidikan.', icon: 'fa-drum', checkmarks: ['Data regu drumband'], categoryGroup: 'SENI', formType: 'performance' }
         ];
         const defaultUsers = [];
         const defaultSubmissions = [];
         const defaultTimeline = [
-            { stage: 'TAHAP 1', title: 'Pendaftaran & Pengumpulan Berkas', date: 'Sesuai pengumuman panitia', desc: 'Peserta melengkapi formulir dan mengirim tautan folder Google Drive berkas lomba.' },
-            { stage: 'TAHAP 2', title: 'Verifikasi dan Seleksi Berkas', date: 'Sesuai jadwal panitia', desc: 'Panitia memeriksa kelengkapan data dan berkas yang dikirim peserta.' },
-            { stage: 'TAHAP 3', title: 'Pengumuman Finalis dan Pemenang', date: 'Sesuai pengumuman panitia', desc: 'Hasil seleksi dan penilaian diumumkan melalui halaman Pengumuman.' }
+            { stage: 'TAHAP 1', title: 'Pendaftaran & Pengumpulan Berkas', date: 'Sesuai pengumuman panitia', desc: 'Peserta melengkapi formulir dan mengirim tautan berkas.', categoryGroup: 'GTK' },
+            { stage: 'TAHAP 2', title: 'Verifikasi dan Seleksi Berkas', date: 'Sesuai jadwal panitia', desc: 'Panitia memeriksa kelengkapan data dan berkas peserta.', categoryGroup: 'GTK' },
+            { stage: 'TAHAP 3', title: 'Pendaftaran Tim dan Technical Meeting', date: 'Sesuai jadwal panitia', desc: 'Pendaftaran tim dan informasi teknis disampaikan panitia.', categoryGroup: 'OLAHRAGA' },
+            { stage: 'TAHAP 1', title: 'Pendaftaran Regu Drumband', date: 'Sesuai jadwal panitia', desc: 'Regu melengkapi data pendaftaran dan koordinator.', categoryGroup: 'SENI' }
         ];
-        const defaultAnnouncements = [];
+                const defaultAnnouncements = [];
         const defaultContent = {
             announcement: 'Pendaftaran Semarak Hari Guru Nasional & HUT PGRI Ke-81 Kabupaten Lampung Barat. Unduh Juknis dan daftarkan karya Anda.',
             heroTitle: 'Semarak Hari Guru Nasional & HUT PGRI Ke-81',
@@ -1249,25 +1332,47 @@ https://hgn.lampungbarat.go.id</textarea>
             const collection = window.fbCollection;
 
             // Listen only to explicitly public settings documents. Never read admin_config.
-            const publicSettings = ['site_content', 'lock_state', 'categories_config', 'timeline_config'];
+            const publicSettings = ['site_content', 'lock_state', 'categories_config', 'timeline_config', 'site_logo_gallery'];
             publicSettings.forEach((id) => {
                 const ref = doc(db, 'artifacts', appId, 'public', 'data', 'settings', id);
                 onSnapshot(ref, (snap) => {
                     if (!snap.exists()) return;
                     const data = snap.data();
                     if (id === 'site_content') { setStored('hgn_content', data); applyContent(); }
+                    else if (id === 'site_logo_gallery') {
+                        const items = Array.isArray(data.items) ? data.items.slice(0, 8) : [];
+                        setStored('hgn_logo_gallery', items); renderExtraLogoGallery();
+                        if (window.__hgnIsAdmin) renderExtraLogoAdminList();
+                    }
                     else if (id === 'lock_state') {
                         localStorage.setItem('hgn_registration_locked', data.locked ? 'true' : 'false');
                         applyLockStateUI();
                     } else if (id === 'categories_config' && Array.isArray(data.items)) {
-                        setStored('hgn_categories', data.items); renderCategories();
-                        if (window.__hgnIsAdmin) renderAdminCategories();
+                        const upgraded = upgradeCategoryList(data.items);
+                        setStored('hgn_categories', upgraded); renderCategories();
+                        if (window.__hgnIsAdmin) {
+                            renderAdminCategories();
+                            if (JSON.stringify(upgraded) !== JSON.stringify(data.items)) pushCloudDoc('settings', 'categories_config', { items: upgraded, schemaVersion: 2, updatedAt: new Date().toISOString() });
+                        }
                     } else if (id === 'timeline_config' && Array.isArray(data.items)) {
-                        setStored('hgn_timeline', data.items); renderTimeline();
-                        if (window.__hgnIsAdmin) renderAdminTimeline();
+                        const upgradedTimeline = upgradeTimelineList(data.items);
+                        setStored('hgn_timeline', upgradedTimeline); renderTimeline();
+                        if (window.__hgnIsAdmin) {
+                            renderAdminTimeline();
+                            if (JSON.stringify(upgradedTimeline) !== JSON.stringify(data.items)) pushCloudDoc('settings', 'timeline_config', { items: upgradedTimeline, schemaVersion: 2, updatedAt: new Date().toISOString() });
+                        }
                     }
                 }, (err) => console.warn('Public settings listener:', err?.code || err));
             });
+
+            const juknisRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'category_juknis');
+            onSnapshot(juknisRef, (snap) => {
+                if (!snap.exists()) return;
+                const data = snap.data();
+                setStored('hgn_category_juknis', data);
+                ['gtk','olahraga','seni'].forEach(k => { const el = document.getElementById('juknis-' + k + '-url'); if (el && el !== document.activeElement) el.value = data[k] || ''; });
+                renderCategories();
+            }, err => console.warn('Category juknis listener:', err?.code || err));
 
             const annRef = collection(db, 'artifacts', appId, 'public', 'data', 'announcements');
             onSnapshot(annRef, (snapshot) => {
@@ -1277,6 +1382,50 @@ https://hgn.lampungbarat.go.id</textarea>
                 renderPublicAnnouncements();
                 if (window.__hgnIsAdmin) renderAdminAnnouncementsTable();
             }, (err) => console.warn('Announcements listener:', err?.code || err));
+            setupEventRegistrationListener();
+        }
+
+        function setupEventRegistrationListener() {
+            if (!window.fbDB || window.__hgnPublicEventRegistrationListenerStarted) return;
+            window.__hgnPublicEventRegistrationListenerStarted = true;
+            const ref = window.fbCollection(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'public_registrations');
+            window.fbOnSnapshot(ref, (snapshot) => {
+                const items = [];
+                snapshot.forEach(d => items.push({ id: d.id, ...d.data() }));
+                items.sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+                setStored('hgn_public_registrations', items);
+                renderCategories();
+            }, err => console.warn('Public registration summary listener:', err?.code || err));
+        }
+
+        async function migrateLegacyCloudConfigsAsAdmin() {
+            if (window.fbAuth?.currentUser?.uid !== window.HGN_ADMIN_UID || !window.fbDB) return;
+            try {
+                const categoryRef = window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'settings', 'categories_config');
+                const categorySnap = await window.fbGetDoc(categoryRef);
+                if (categorySnap.exists()) {
+                    const remote = categorySnap.data();
+                    if (Array.isArray(remote.items)) {
+                        const upgraded = upgradeCategoryList(remote.items);
+                        if (JSON.stringify(upgraded) !== JSON.stringify(remote.items)) {
+                            const result = await pushCloudDoc('settings', 'categories_config', { items: upgraded, schemaVersion: 2, updatedAt: new Date().toISOString() });
+                            if (!result.ok) console.warn('Category config migration:', result.error);
+                        }
+                    }
+                }
+                const timelineRef = window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'settings', 'timeline_config');
+                const timelineSnap = await window.fbGetDoc(timelineRef);
+                if (timelineSnap.exists()) {
+                    const remote = timelineSnap.data();
+                    if (Array.isArray(remote.items)) {
+                        const upgraded = upgradeTimelineList(remote.items);
+                        if (JSON.stringify(upgraded) !== JSON.stringify(remote.items)) {
+                            const result = await pushCloudDoc('settings', 'timeline_config', { items: upgraded, schemaVersion: 2, updatedAt: new Date().toISOString() });
+                            if (!result.ok) console.warn('Timeline config migration:', result.error);
+                        }
+                    }
+                }
+            } catch (err) { console.warn('Cloud config migration:', err?.code || err); }
         }
 
         function setupRoleSpecificCloudListeners(user) {
@@ -1286,9 +1435,16 @@ https://hgn.lampungbarat.go.id</textarea>
             localStorage.setItem('hgn_admin_active', window.__hgnIsAdmin ? 'true' : 'false');
             if (window.__hgnIsAdmin) {
                 toggleAdminMode(true);
+                migrateLegacyCloudConfigsAsAdmin();
                 const db = window.fbDB, appId = window.fbAppId;
                 const usersRef = window.fbCollection(db, 'artifacts', appId, 'public', 'data', 'users');
                 const subsRef = window.fbCollection(db, 'artifacts', appId, 'public', 'data', 'submissions');
+                const eventRegsRef = window.fbCollection(db, 'artifacts', appId, 'public', 'data', 'event_registrations');
+                window.__hgnRoleUnsubs.push(window.fbOnSnapshot(eventRegsRef, (snapshot) => {
+                    const regs = []; snapshot.forEach(d => regs.push({ id: d.id, ...d.data() }));
+                    regs.sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+                    setStored('hgn_event_registrations', regs); renderAdminRegistrations(); renderAdminStats();
+                }, err => console.warn('Admin event registrations listener:', err?.code || err)));
                 window.__hgnRoleUnsubs.push(window.fbOnSnapshot(usersRef, (snapshot) => {
                     const cloudUsers = [];
                     snapshot.forEach(d => {
@@ -1310,6 +1466,8 @@ https://hgn.lampungbarat.go.id</textarea>
                 }, err => console.warn('Admin submissions listener:', err?.code || err)));
             } else {
                 toggleAdminMode(false);
+                // Jangan pertahankan salinan data kontak/anggota pendaftaran admin di sesi publik.
+                setStored('hgn_event_registrations', []);
                 if (user && user.email) {
                     const profileRef = window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'users', user.uid);
                     window.__hgnRoleUnsubs.push(window.fbOnSnapshot(profileRef, (snap) => {
@@ -1340,15 +1498,21 @@ https://hgn.lampungbarat.go.id</textarea>
             if (!localStorage.getItem('hgn_users')) setStored('hgn_users', defaultUsers);
             if (!localStorage.getItem('hgn_submissions')) setStored('hgn_submissions', defaultSubmissions);
             if (!localStorage.getItem('hgn_categories')) setStored('hgn_categories', defaultCategories);
+            else setStored('hgn_categories', upgradeCategoryList(getStored('hgn_categories', defaultCategories)));
             if (!localStorage.getItem('hgn_timeline')) setStored('hgn_timeline', defaultTimeline);
+            else setStored('hgn_timeline', upgradeTimelineList(getStored('hgn_timeline', defaultTimeline)));
             if (!localStorage.getItem('hgn_announcements')) setStored('hgn_announcements', defaultAnnouncements);
             if (!localStorage.getItem('hgn_content')) setStored('hgn_content', defaultContent);
+            if (!localStorage.getItem('hgn_logo_gallery')) setStored('hgn_logo_gallery', []);
             
             localStorage.removeItem('hgn_admin_pass'); // Kata sandi admin tidak lagi disimpan di browser.
             const legacyUsers = getStored('hgn_users', []);
             if (Array.isArray(legacyUsers)) setStored('hgn_users', legacyUsers.map(({password, ...u}) => u));
 
             applyContent();
+            renderExtraLogoGallery();
+            renderExtraLogoAdminList();
+            startLiveClock();
             renderCategories();
             renderAdminCategories();
             renderTimeline();
@@ -1578,6 +1742,61 @@ https://hgn.lampungbarat.go.id</textarea>
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        function renderExtraLogoGallery() {
+            const host = document.getElementById('hero-extra-logo-gallery');
+            if (!host) return;
+            const items = getStored('hgn_logo_gallery', []).filter(item => item && item.active !== false && item.image).slice(0, 8);
+            host.innerHTML = items.map(item => `<div class="flex flex-col items-center gap-1 p-2 bg-white rounded-2xl border border-slate-200 shadow-sm" style="width:84px"><img src="${item.image}" alt="${escapeHtml(item.name || 'Logo instansi')}" loading="lazy" class="w-14 h-14 object-contain rounded-lg"><span class="text-[9px] leading-tight text-slate-700 font-bold text-center break-words">${escapeHtml(item.name || 'Logo')}</span></div>`).join('');
+        }
+
+        function renderExtraLogoAdminList() {
+            const host = document.getElementById('extra-logo-admin-list');
+            if (!host) return;
+            const items = getStored('hgn_logo_gallery', []);
+            if (!items.length) { host.innerHTML = '<p class="text-xs text-slate-400">Belum ada logo tambahan. Pilih gambar dan klik Tambah Logo.</p>'; return; }
+            host.innerHTML = items.map((item, index) => `<article class="rounded-xl border border-slate-700 bg-navy-900 p-3 flex gap-3 items-center"><img src="${item.image}" alt="${escapeHtml(item.name || 'Logo')}" class="w-14 h-14 object-contain rounded-lg bg-white p-1 shrink-0"><div class="min-w-0 flex-1"><p class="text-xs font-bold text-white break-words">${escapeHtml(item.name || 'Logo tanpa nama')}</p><label class="mt-2 flex items-center gap-2 text-[11px] text-slate-300"><input type="checkbox" ${item.active === false ? '' : 'checked'} onchange="toggleExtraLogo(${index}, this.checked)">Tampilkan di beranda</label><div class="flex flex-wrap gap-1 mt-2"><button type="button" onclick="moveExtraLogo(${index},-1)" ${index===0?'disabled':''} class="px-2 py-1 rounded bg-slate-700 text-white text-[10px] disabled:opacity-30" aria-label="Geser logo ke kiri">←</button><button type="button" onclick="moveExtraLogo(${index},1)" ${index===items.length-1?'disabled':''} class="px-2 py-1 rounded bg-slate-700 text-white text-[10px] disabled:opacity-30" aria-label="Geser logo ke kanan">→</button><button type="button" onclick="deleteExtraLogo(${index})" class="px-2 py-1 rounded bg-rose-700 text-white text-[10px]">Hapus</button></div></div></article>`).join('');
+        }
+
+        function toggleExtraLogo(index, active) { const items = getStored('hgn_logo_gallery', []); if (!items[index]) return; items[index].active = !!active; setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery(); }
+        function moveExtraLogo(index, direction) { const items = getStored('hgn_logo_gallery', []); const next = index + direction; if (next < 0 || next >= items.length) return; [items[index], items[next]] = [items[next], items[index]]; setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery(); }
+        function deleteExtraLogo(index) { const items = getStored('hgn_logo_gallery', []); if (!items[index]) return; items.splice(index, 1); setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery(); showToast('Logo dihapus dari daftar sementara. Klik Simpan Galeri Logo ke Cloud untuk menerapkan.', 'warning'); }
+
+        async function addExtraLogo() {
+            const fileInput = document.getElementById('extra-logo-file');
+            const nameInput = document.getElementById('extra-logo-name');
+            const file = fileInput?.files?.[0];
+            const name = (nameInput?.value || '').trim();
+            const items = getStored('hgn_logo_gallery', []);
+            if (!name) { showToast('Isi nama logo terlebih dahulu.', 'warning'); return; }
+            if (!file) { showToast('Pilih file gambar logo terlebih dahulu.', 'warning'); return; }
+            if (!['image/png','image/jpeg','image/webp'].includes(file.type)) { showToast('Gunakan gambar PNG, JPG, atau WebP.', 'warning'); return; }
+            if (file.size > 2 * 1024 * 1024) { showToast('Ukuran gambar maksimal 2 MB.', 'warning'); return; }
+            if (items.length >= 8) { showToast('Maksimal 8 logo tambahan agar data tetap aman di Firestore.', 'warning'); return; }
+            try {
+                const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); });
+                const image = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = reject; img.src = dataUrl; });
+                const maxSide = 240; const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+                const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                const ctx = canvas.getContext('2d'); ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                let compressed = canvas.toDataURL('image/webp', 0.55);
+                if (!compressed || compressed.length > 65000) compressed = canvas.toDataURL('image/jpeg', 0.48);
+                if (compressed.length > 90000) { showToast('Gambar masih terlalu besar setelah diperkecil. Pilih gambar logo yang lebih sederhana.', 'warning'); return; }
+                items.push({ id: 'logo_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7), name, image: compressed, active: true });
+                setStored('hgn_logo_gallery', items); renderExtraLogoAdminList(); renderExtraLogoGallery();
+                nameInput.value = ''; fileInput.value = ''; showToast('Logo ditambahkan. Klik Simpan Galeri Logo ke Cloud agar tampil di semua perangkat.', 'success');
+            } catch (err) { console.error('Logo processing error:', err); showToast('Gambar gagal diproses. Coba file gambar lain.', 'error'); }
+        }
+
+        async function saveExtraLogoGallery() {
+            const items = getStored('hgn_logo_gallery', []);
+            const estimatedSize = JSON.stringify(items).length;
+            if (estimatedSize > 700000) { showToast('Total galeri logo terlalu besar. Hapus beberapa logo atau gunakan gambar lebih kecil.', 'warning'); return; }
+            showToast('Menyimpan galeri logo ke cloud…', 'warning');
+            const result = await pushCloudDoc('settings', 'site_logo_gallery', { items, updatedAt: new Date().toISOString() });
+            if (result.ok) { renderExtraLogoGallery(); showToast('Galeri logo berhasil disimpan dan disinkronkan ke perangkat pengunjung.', 'success'); }
+            else showToast(result.error, 'error');
+        }
+
         function applyContent() {
             const content = getStored('hgn_content', defaultContent);
             document.getElementById('announcement-text').innerText = content.announcement;
@@ -1595,10 +1814,13 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('edit-logo-gtk').value = content.logoGtkUrl;
             document.getElementById('edit-logo-disdik').value = content.logoDisdikUrl;
             document.getElementById('edit-juknis-url').value = content.juknisUrl;
+            const categoryJuknis = getStored('hgn_category_juknis', {});
+            ['gtk','olahraga','seni'].forEach(k => { const el = document.getElementById('juknis-' + k + '-url'); if (el) el.value = categoryJuknis[k] || ''; });
             document.getElementById('edit-scores-pdf-url').value = content.scoresPdfUrl || '';
             document.getElementById('edit-announcement').value = content.announcement;
             document.getElementById('edit-hero-title').value = content.heroTitle;
             document.getElementById('edit-hero-theme').value = content.heroTheme;
+            renderExtraLogoGallery();
         }
 
         async function saveRealtimeContent() {
@@ -1633,32 +1855,96 @@ https://hgn.lampungbarat.go.id</textarea>
             return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
         }
 
-        function isStandCategory(title) {
-            return /stand/i.test(String(title || ''));
+        function categoryGroupLabel(group) {
+            return group === 'OLAHRAGA' ? 'Kategori Lomba Olahraga' : group === 'SENI' ? 'Kategori Lomba Seni Pertunjukan' : 'Kategori Lomba GTK';
         }
-
+        function inferCategoryGroup(c) {
+            const title = String(c?.title || '').toLowerCase();
+            if (c?.categoryGroup) return c.categoryGroup;
+            if (/voli|futsal|olahraga|basket|badminton|sepak bola/.test(title)) return 'OLAHRAGA';
+            if (/drumband|seni pertunjukan|tari|musik/.test(title)) return 'SENI';
+            return 'GTK';
+        }
+        function inferFormType(c) {
+            if (c?.formType) return c.formType;
+            const title = String(c?.title || '').toLowerCase();
+            if (/stan|stand pendidikan/.test(title)) return 'stand';
+            if (/voli|futsal|olahraga|basket|badminton|sepak bola/.test(title)) return 'sport';
+            if (/drumband|seni pertunjukan|tari|musik/.test(title)) return 'performance';
+            return 'gtk';
+        }
+        function normalizeCategory(c) {
+            return { ...c, categoryGroup: inferCategoryGroup(c), formType: inferFormType(c), checkmarks: Array.isArray(c?.checkmarks) ? c.checkmarks : [] };
+        }
+        function upgradeCategoryList(items) {
+            const raw = Array.isArray(items) ? items : [];
+            const legacy = raw.some(c => !c.categoryGroup || !c.formType);
+            const source = raw.map(normalizeCategory);
+            if (!legacy) return source;
+            const names = new Set(source.map(c => String(c.title || '').toLowerCase()));
+            return source.concat(defaultCategories.filter(c => !names.has(c.title.toLowerCase())).map(normalizeCategory));
+        }
+        function upgradeTimelineList(items) {
+            const raw = Array.isArray(items) ? items : [];
+            const legacy = raw.some(t => !t.categoryGroup);
+            const source = raw.map(t => ({ ...t, categoryGroup: t.categoryGroup || 'GTK' }));
+            if (!legacy) return source;
+            const has = new Set(source.map(t => t.categoryGroup));
+            const add = defaultTimeline.filter(t => t.categoryGroup !== 'GTK' && !has.has(t.categoryGroup));
+            return source.concat(add);
+        }
+        function isStandCategory(title) {
+            const category = getStored('hgn_categories', defaultCategories).find(c => c.title === title);
+            return inferFormType(category || { title }) === 'stand';
+        }
+        function getCategoryJuknis(group) {
+            const j = getStored('hgn_category_juknis', {});
+            return group === 'OLAHRAGA' ? (j.olahraga || '') : group === 'SENI' ? (j.seni || '') : (j.gtk || '');
+        }
+        function renderPublicRegistrants(categoryTitle) {
+            const regs = getStored('hgn_public_registrations', []).filter(r => r.category === categoryTitle);
+            if (!regs.length) return '<p class="text-[11px] text-slate-400 italic">Belum ada pendaftar yang ditampilkan.</p>';
+            return `<div class="mt-4 border-t border-slate-100 pt-3"><div class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">Daftar Pendaftar</div><div class="space-y-2">${regs.slice(0,8).map(r => `<div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"><div><div class="text-xs font-bold text-slate-800">${escapeHtml(r.displayName || r.teamName || r.standName || r.name || '-')}</div><div class="text-[10px] text-slate-500">${escapeHtml(r.school || r.schoolList || '-') } · Kec. ${escapeHtml(r.kecamatan || '-')} · ${escapeHtml(r.category || '-')}</div></div><span class="rounded-full px-2 py-1 text-[9px] font-bold ${String(r.status).toUpperCase()==='VERIFIED' || String(r.status).toUpperCase()==='TERDAFTAR' ? 'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'}">${escapeHtml(r.status || 'TERDAFTAR')}</span></div>`).join('')}</div>${regs.length > 8 ? `<p class="text-[10px] text-slate-400 mt-2">Menampilkan 8 dari ${regs.length} pendaftar.</p>` : ''}</div>`;
+        }
         function renderCategories() {
-            const cats = getStored('hgn_categories', defaultCategories);
+            const cats = getStored('hgn_categories', defaultCategories).map(normalizeCategory);
             const container = document.getElementById('categories-container');
+            const countEl = document.getElementById('stat-public-category-count');
+            if (countEl) countEl.textContent = String(cats.length);
             if (!container) return;
             if (!cats.length) {
                 container.innerHTML = '<div class="md:col-span-2 bg-white rounded-3xl p-8 text-center border border-slate-200"><i class="fa-solid fa-trophy text-3xl text-teal-600 mb-3"></i><h3 class="font-extrabold text-slate-800">Cabang lomba sedang diperbarui</h3><p class="text-sm text-slate-500 mt-2">Silakan periksa kembali nanti atau hubungi panitia.</p></div>';
                 syncCategoryOptions(); return;
             }
-            container.innerHTML = cats.map((c, i) => `
-                <article class="p-7 sm:p-8 rounded-3xl bg-white border border-slate-200 hover:border-teal-400 hover:shadow-xl transition-all flex flex-col justify-between relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-28 h-28 rounded-full bg-teal-50 -translate-y-1/2 translate-x-1/2"></div>
-                    <div class="relative">
-                        <div class="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 text-xl mb-5"><i class="fa-solid ${escapeHtml(c.icon || 'fa-trophy')}"></i></div>
-                        <div class="text-[10px] font-extrabold tracking-[.16em] uppercase text-teal-700 mb-2">Cabang Lomba ${String(i+1).padStart(2,'0')}</div>
-                        <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 mb-3">${escapeHtml(c.title)}</h3>
-                        <p class="text-slate-600 text-sm leading-relaxed mb-5">${escapeHtml(c.desc)}</p>
-                        ${isStandCategory(c.title) ? '' : `<div class="space-y-2.5 mb-7 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                            ${(Array.isArray(c.checkmarks)?c.checkmarks:[]).map(item => `<div class="flex items-start text-xs font-bold text-slate-700"><span class="w-5 h-5 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mr-2 text-xs font-extrabold shrink-0">✓</span><span>${escapeHtml(item)}</span></div>`).join('')}
-                        </div>`}
+            const groups = [
+                { id: 'GTK', title: 'Kategori Lomba GTK', desc: 'Lomba individu, karya tulis, komunitas belajar, serta stan pendidikan dan inovasi.' },
+                { id: 'OLAHRAGA', title: 'Kategori Lomba Olahraga', desc: 'Pendaftaran tim olahraga tanpa perlu membuat akun peserta.' },
+                { id: 'SENI', title: 'Kategori Lomba Seni Pertunjukan', desc: 'Pendaftaran regu seni pertunjukan tanpa perlu membuat akun peserta.' }
+            ];
+            container.innerHTML = groups.map(group => {
+                const groupCats = cats.filter(c => c.categoryGroup === group.id);
+                const juknis = getCategoryJuknis(group.id);
+                return `<section class="md:col-span-2 mb-3">
+                    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
+                        <div><span class="text-[10px] uppercase tracking-widest font-extrabold text-teal-700">${escapeHtml(group.title)}</span><h3 class="text-2xl font-extrabold text-slate-900 mt-1">${escapeHtml(group.title)}</h3><p class="text-sm text-slate-600 mt-1">${escapeHtml(group.desc)}</p></div>
+                        ${juknis ? `<a href="${escapeHtml(juknis)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 self-start rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-extrabold text-teal-800 hover:bg-teal-100"><i class="fa-solid fa-file-arrow-down"></i> Unduh Juknis</a>` : `<span class="inline-flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[10px] font-semibold text-slate-400"><i class="fa-solid fa-file-circle-question"></i> Juknis belum tersedia</span>`}
                     </div>
-                    ${isStandCategory(c.title) ? `<div class="mt-2 rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-xs font-semibold text-teal-800"><i class="fa-solid fa-circle-info mr-1"></i>Informasi lomba saja. Cabang ini tidak menggunakan formulir pendaftaran atau tautan unggah berkas melalui website.</div>` : `<button data-category="${escapeHtml(c.title)}" onclick="handleSelectCategory(this.dataset.category)" class="relative w-full py-3.5 rounded-xl bg-navy-950 hover:bg-teal-500 hover:text-navy-950 text-white font-extrabold text-xs transition-all shadow-md"><i class="fa-solid fa-arrow-right mr-2"></i>Pilih Cabang Lomba</button>`}
-                </article>`).join('');
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    ${groupCats.map((c, i) => `<article class="p-6 rounded-3xl bg-white border border-slate-200 hover:border-teal-400 hover:shadow-xl transition-all flex flex-col relative overflow-hidden">
+                        <div class="relative flex-1">
+                            <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-700 text-lg mb-4"><i class="fa-solid ${escapeHtml(c.icon || 'fa-trophy')}"></i></div>
+                            <div class="text-[10px] font-extrabold tracking-[.16em] uppercase text-teal-700 mb-2">${escapeHtml(group.title)} · ${String(i+1).padStart(2,'0')}</div>
+                            <h4 class="text-lg sm:text-xl font-extrabold text-slate-900 mb-2">${escapeHtml(c.title)}</h4>
+                            <p class="text-slate-600 text-sm leading-relaxed mb-4">${escapeHtml(c.desc)}</p>
+                            <div class="space-y-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">${c.checkmarks.map(item => `<div class="flex items-start text-xs font-bold text-slate-700"><span class="w-5 h-5 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center mr-2 text-xs font-extrabold shrink-0">✓</span><span>${escapeHtml(item)}</span></div>`).join('')}</div>
+                            ${renderPublicRegistrants(c.title)}
+                        </div>
+                        <button data-category="${escapeHtml(c.title)}" onclick="handleSelectCategory(this.dataset.category)" class="mt-5 w-full py-3.5 rounded-xl bg-navy-950 hover:bg-teal-500 hover:text-navy-950 text-white font-extrabold text-xs transition-all shadow-md"><i class="fa-solid ${c.formType==='sport' || c.formType==='performance' ? 'fa-people-group' : 'fa-arrow-right'} mr-2"></i>${c.formType==='sport' || c.formType==='performance' ? 'Daftar Tim / Regu' : c.formType==='stand' ? 'Daftar Stan' : 'Pilih Cabang Lomba'}</button>
+                    </article>`).join('')}
+                    </div>
+                    ${groupCats.length ? '' : '<p class="rounded-xl border border-dashed border-slate-300 p-5 text-sm text-slate-500">Belum ada cabang lomba di kategori ini. Panitia dapat menambahkannya melalui portal admin.</p>'}
+                </section>`;
+            }).join('');
             syncCategoryOptions();
         }
 
@@ -1676,7 +1962,7 @@ https://hgn.lampungbarat.go.id</textarea>
                 else if (first) { firstLabel = first.textContent; firstValue = first.value; }
                 select.innerHTML = '';
                 const placeholder = document.createElement('option'); placeholder.value = firstValue; placeholder.textContent = firstLabel; select.appendChild(placeholder);
-                cats.filter(c => id !== 'sub-category' || !isStandCategory(c.title)).forEach(c => { const opt = document.createElement('option'); opt.value = c.title; opt.textContent = c.title; select.appendChild(opt); });
+                cats.map(normalizeCategory).filter(c => id !== 'sub-category' || ['gtk','stand'].includes(c.formType)).forEach(c => { const opt = document.createElement('option'); opt.value = c.title; opt.textContent = c.title; select.appendChild(opt); });
                 if ([...select.options].some(o => o.value === oldValue)) select.value = oldValue;
             });
         }
@@ -1684,14 +1970,14 @@ https://hgn.lampungbarat.go.id</textarea>
         function renderAdminCategories() {
             const list = document.getElementById('admin-categories-list');
             if (!list) return;
-            const cats = getStored('hgn_categories', defaultCategories);
+            const cats = getStored('hgn_categories', defaultCategories).map(normalizeCategory);
             const count = document.getElementById('category-admin-count');
             if (count) count.textContent = `${cats.length} cabang`;
             if (!cats.length) { list.innerHTML = '<p class="text-xs text-slate-400 p-4">Belum ada cabang. Tambahkan melalui formulir.</p>'; return; }
             list.innerHTML = cats.map((c, i) => `
                 <article class="hgn-category-editor-card">
                     <div class="hgn-category-icon"><i class="fa-solid ${escapeHtml(c.icon || 'fa-trophy')}"></i></div>
-                    <div class="flex-1 min-w-0"><div class="text-sm font-extrabold text-white">${escapeHtml(c.title)}</div><p class="text-xs text-slate-400 mt-1 leading-relaxed">${escapeHtml(c.desc)}</p><div class="flex flex-wrap gap-1.5 mt-3">${(Array.isArray(c.checkmarks)?c.checkmarks:[]).map(x=>`<span class="text-[10px] rounded-full px-2.5 py-1 bg-teal-400/10 text-teal-100 border border-teal-300/10">${escapeHtml(x)}</span>`).join('')}</div>
+                    <div class="flex-1 min-w-0"><div class="text-sm font-extrabold text-white">${escapeHtml(c.title)}</div><p class="text-xs text-slate-400 mt-1 leading-relaxed">${escapeHtml(c.desc)}</p><div class="flex flex-wrap gap-1.5 mt-2"><span class="text-[10px] rounded-full px-2.5 py-1 bg-amber-400/10 text-amber-200 border border-amber-300/10">${escapeHtml(categoryGroupLabel(c.categoryGroup))}</span><span class="text-[10px] rounded-full px-2.5 py-1 bg-sky-400/10 text-sky-200 border border-sky-300/10">${escapeHtml(c.formType)}</span></div><div class="flex flex-wrap gap-1.5 mt-3">${(Array.isArray(c.checkmarks)?c.checkmarks:[]).map(x=>`<span class="text-[10px] rounded-full px-2.5 py-1 bg-teal-400/10 text-teal-100 border border-teal-300/10">${escapeHtml(x)}</span>`).join('')}</div>
                     <div class="hgn-category-actions flex flex-wrap gap-2 mt-4"><button type="button" onclick="editCategoryAdmin(${i})" class="hgn-btn-secondary"><i class="fa-solid fa-pen mr-1"></i>Edit</button><button type="button" onclick="deleteCategoryAdmin(${i})" class="hgn-btn-danger"><i class="fa-solid fa-trash mr-1"></i>Hapus</button></div></div>
                 </article>`).join('');
         }
@@ -1703,6 +1989,8 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('category-form-heading').textContent = 'Tambah Cabang Lomba';
             document.getElementById('category-save-button').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Cabang';
             document.getElementById('category-icon-input').value = 'fa-trophy';
+            document.getElementById('category-group-input').value = 'GTK';
+            document.getElementById('category-formtype-input').value = 'gtk';
         }
 
         function editCategoryAdmin(index) {
@@ -1713,6 +2001,8 @@ https://hgn.lampungbarat.go.id</textarea>
             document.getElementById('category-desc-input').value = c.desc || '';
             document.getElementById('category-requirements-input').value = (c.checkmarks || []).join('\n');
             document.getElementById('category-icon-input').value = c.icon || 'fa-trophy';
+            document.getElementById('category-group-input').value = inferCategoryGroup(c);
+            document.getElementById('category-formtype-input').value = inferFormType(c);
             document.getElementById('category-form-heading').textContent = 'Edit Cabang Lomba';
             document.getElementById('category-save-button').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan';
             document.getElementById('category-title-input').focus();
@@ -1726,10 +2016,12 @@ https://hgn.lampungbarat.go.id</textarea>
             const desc = document.getElementById('category-desc-input').value.trim();
             const checkmarks = document.getElementById('category-requirements-input').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
             const icon = document.getElementById('category-icon-input').value;
+            const categoryGroup = document.getElementById('category-group-input').value;
+            const formType = document.getElementById('category-formtype-input').value;
             if (!title || !desc || !checkmarks.length) { showToast('Lengkapi nama, deskripsi, dan minimal satu persyaratan.', 'warning'); return; }
             const duplicate = cats.some((c,i) => c.title.toLowerCase() === title.toLowerCase() && String(i) !== indexValue);
             if (duplicate) { showToast('Nama cabang lomba sudah ada.', 'warning'); return; }
-            const category = { title, desc, checkmarks, icon };
+            const category = { title, desc, checkmarks, icon, categoryGroup, formType };
             if (indexValue === '') cats.push(category); else cats[Number(indexValue)] = category;
             setStored('hgn_categories', cats);
             renderCategories(); renderAdminCategories(); syncCategoryOptions();
@@ -1752,18 +2044,199 @@ https://hgn.lampungbarat.go.id</textarea>
             else showToast(result.error + ' Penghapusan belum tersinkron ke perangkat lain.', 'error');
         }
 
-        function handleSelectCategory(catTitle) {
-            if (isStandCategory(catTitle)) {
-                showToast('Lomba Stand hanya menampilkan keterangan. Tidak ada formulir atau tautan unggah berkas di website.', 'success');
+        function ensureCompetitionModal() {
+            let modal = document.getElementById('competition-register-modal');
+            if (modal) return modal;
+            modal = document.createElement('div');
+            modal.id = 'competition-register-modal';
+            modal.className = 'hidden fixed inset-0 z-[10000] bg-slate-950/70 p-3 sm:p-6 overflow-y-auto';
+            modal.innerHTML = `<div class="max-w-3xl mx-auto my-5 rounded-3xl bg-white shadow-2xl overflow-hidden"><div class="flex items-start justify-between gap-4 bg-navy-950 text-white p-5 sm:p-7"><div><div id="competition-modal-group" class="text-[10px] uppercase tracking-widest text-amber-300 font-extrabold"></div><h3 id="competition-modal-title" class="text-xl sm:text-2xl font-extrabold mt-1"></h3><p id="competition-modal-desc" class="text-xs text-slate-300 mt-2"></p></div><button type="button" onclick="closeCompetitionModal()" class="rounded-xl bg-white/10 px-3 py-2 text-white" aria-label="Tutup formulir"><i class="fa-solid fa-xmark"></i></button></div><form id="competition-registration-form" onsubmit="submitCompetitionRegistration(event)" class="p-5 sm:p-7 space-y-4"><div id="competition-modal-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div><div id="competition-member-area" class="hidden"><div class="flex items-center justify-between gap-3 mb-2"><label class="text-xs font-extrabold text-slate-800">Daftar anggota / pengelola</label><button type="button" onclick="addRegistrationMemberRow()" class="rounded-lg bg-teal-700 px-3 py-2 text-[11px] font-bold text-white"><i class="fa-solid fa-plus mr-1"></i>Tambah Baris</button></div><div id="competition-member-rows" class="space-y-2"></div></div><div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">Periksa kembali data sebelum dikirim. Data pendaftaran akan tersimpan pada sistem panitia.</div><div class="flex flex-wrap gap-2"><button type="submit" class="rounded-xl bg-gold-gradient px-5 py-3 text-xs font-extrabold text-navy-950"><i class="fa-solid fa-paper-plane mr-1"></i>Kirim Pendaftaran</button><button type="button" onclick="closeCompetitionModal()" class="rounded-xl border border-slate-300 px-5 py-3 text-xs font-bold text-slate-600">Batal</button></div><p id="competition-submit-status" class="text-xs text-slate-500" aria-live="polite"></p></form></div>`;
+            document.body.appendChild(modal);
+            return modal;
+        }
+        let activeRegistrationCategory = null;
+        function fieldMarkup(id, label, type='text', required=true, placeholder='') {
+            return `<div class="space-y-1"><label for="${id}" class="block text-xs font-bold text-slate-700">${label}${required?' *':''}</label><input id="${id}" name="${id}" type="${type}" ${required?'required':''} maxlength="300" placeholder="${escapeHtml(placeholder)}" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs text-slate-900 focus:border-teal-500 focus:outline-none"></div>`;
+        }
+        function showCompetitionRegistration(categoryTitle) {
+            const category = getStored('hgn_categories', defaultCategories).map(normalizeCategory).find(c => c.title === categoryTitle);
+            if (!category) { showToast('Cabang lomba tidak ditemukan. Muat ulang halaman.', 'error'); return; }
+            activeRegistrationCategory = category;
+            localStorage.setItem('hgn_selected_category', category.title);
+            const modal = ensureCompetitionModal();
+            document.getElementById('competition-modal-group').textContent = categoryGroupLabel(category.categoryGroup);
+            document.getElementById('competition-modal-title').textContent = category.title;
+            document.getElementById('competition-modal-desc').textContent = category.formType === 'sport' ? 'Formulir tim olahraga. Tidak perlu membuat akun peserta.' : category.formType === 'performance' ? 'Formulir regu seni pertunjukan. Tidak perlu membuat akun peserta.' : 'Formulir pendaftaran stan. Akun dibuat untuk mengirim tautan berkas setelah disetujui admin.';
+            const fields = document.getElementById('competition-modal-fields');
+            const memberArea = document.getElementById('competition-member-area');
+            const memberRows = document.getElementById('competition-member-rows');
+            memberRows.innerHTML = '';
+            if (category.formType === 'sport') {
+                fields.innerHTML = fieldMarkup('cr-team-name','Nama tim') + fieldMarkup('cr-kecamatan','Asal kecamatan') + fieldMarkup('cr-coordinator','Nama koordinator / penanggung jawab') + fieldMarkup('cr-phone','Nomor telepon / WhatsApp','tel',true,'08xxxxxxxxxx');
+                memberArea.classList.remove('hidden'); addRegistrationMemberRow('sports');
+            } else if (category.formType === 'performance') {
+                fields.innerHTML = fieldMarkup('cr-team-name','Nama regu drumband') + fieldMarkup('cr-school','Asal sekolah') + fieldMarkup('cr-kecamatan','Asal kecamatan') + fieldMarkup('cr-coordinator','Nama koordinator / penanggung jawab') + fieldMarkup('cr-phone','Nomor telepon / WhatsApp','tel',true,'08xxxxxxxxxx');
+                memberArea.classList.add('hidden');
+            } else if (category.formType === 'stand') {
+                fields.innerHTML = fieldMarkup('cr-stand-name','Nama / tema stan') + fieldMarkup('cr-kecamatan','Asal kecamatan') + fieldMarkup('cr-coordinator','Nama penanggung jawab / koordinator') + fieldMarkup('cr-coordinator-school','Asal sekolah koordinator') + fieldMarkup('cr-phone','Nomor telepon / WhatsApp','tel',true,'08xxxxxxxxxx') + fieldMarkup('cr-email','Email untuk login','email') + fieldMarkup('cr-password','Password akun','password',true,'Minimal 6 karakter');
+                memberArea.classList.remove('hidden'); addRegistrationMemberRow('stand');
+            } else {
+                closeCompetitionModal();
+                localStorage.setItem('hgn_selected_category', category.title);
+                navigateTo('portal');
+                const user = getStored('hgn_session', null);
+                if (user && user.status === 'VERIFIED') {
+                    const subCatEl = document.getElementById('sub-category');
+                    if (subCatEl) subCatEl.value = category.title;
+                } else {
+                    switchAuthMode('register');
+                    showToast('Silakan daftar/login. Akun harus diverifikasi admin sebelum mengirim berkas.', 'warning');
+                }
                 return;
             }
+            document.getElementById('competition-submit-status').textContent = '';
+            modal.classList.remove('hidden');
+        }
+        function addRegistrationMemberRow(mode) {
+            const host = document.getElementById('competition-member-rows');
+            if (!host) return;
+            const isStand = mode === 'stand' || activeRegistrationCategory?.formType === 'stand';
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2';
+            row.innerHTML = `<input name="memberName" required maxlength="150" placeholder="${isStand?'Nama anggota pengelola stan':'Nama peserta'}" class="rounded-xl border border-slate-300 px-3 py-2.5 text-xs text-slate-900"><input name="memberSchool" required maxlength="200" placeholder="Asal sekolah" class="rounded-xl border border-slate-300 px-3 py-2.5 text-xs text-slate-900"><button type="button" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600" onclick="this.parentElement.remove()" aria-label="Hapus baris anggota"><i class="fa-solid fa-trash"></i></button>`;
+            host.appendChild(row);
+        }
+        function closeCompetitionModal() {
+            document.getElementById('competition-register-modal')?.classList.add('hidden');
+            activeRegistrationCategory = null;
+        }
+        async function submitCompetitionRegistration(event) {
+            event.preventDefault();
+            if (isRegistrationLocked()) { showToast('Pendaftaran sedang ditutup panitia.', 'error'); return; }
+            const category = activeRegistrationCategory;
+            if (!category) return;
+            const form = event.currentTarget;
+            const val = id => document.getElementById(id)?.value?.trim() || '';
+            const statusEl = document.getElementById('competition-submit-status');
+            statusEl.textContent = 'Menyimpan pendaftaran…';
+            try {
+                const members = [...document.querySelectorAll('#competition-member-rows > div')].map(row => ({
+                    name: row.querySelector('[name="memberName"]')?.value.trim() || '',
+                    school: row.querySelector('[name="memberSchool"]')?.value.trim() || ''
+                })).filter(m => m.name);
+                if ((category.formType === 'sport' || category.formType === 'stand') && !members.length) throw new Error('Tambahkan minimal satu anggota/pengelola.');
+                const createdAt = new Date().toISOString();
+                const db = window.fbDB, appId = window.fbAppId;
+                if (!db || !window.fbAuth) throw new Error('Firebase belum siap. Periksa koneksi internet.');
+                let payload;
+                if (category.formType === 'stand') {
+                    const email = val('cr-email').toLowerCase(), password = val('cr-password');
+                    if (password.length < 6) throw new Error('Password minimal 6 karakter.');
+                    const cred = await window.fbCreateUserWithEmailAndPassword(window.fbAuth, email, password);
+                    const uid = cred.user.uid;
+                    const standName = val('cr-stand-name');
+                    const profile = {
+                        id: uid, name: standName, school: val('cr-coordinator-school'), kecamatan: val('cr-kecamatan'),
+                        phone: val('cr-phone'), email, status: 'PENDING', created_at: createdAt,
+                        competitionCategory: category.title, categoryGroup: category.categoryGroup, registrationType: 'stand',
+                        standName, standTheme: standName, coordinator: val('cr-coordinator'), members
+                    };
+                    const profileResult = await pushCloudDoc('users', uid, profile, false);
+                    if (!profileResult.ok) throw new Error(profileResult.error || 'Profil stan gagal disimpan.');
+                    payload = {
+                        id: uid, userId: uid, registrationType: 'stand', categoryGroup: category.categoryGroup, category: category.title,
+                        displayName: standName, standName, school: val('cr-coordinator-school'), kecamatan: val('cr-kecamatan'),
+                        coordinator: val('cr-coordinator'), phone: val('cr-phone'), email, members, status: 'PENDING', createdAt
+                    };
+                    const eventResult = await pushCloudDoc('event_registrations', uid, payload, false);
+                    if (!eventResult.ok) throw new Error(eventResult.error || 'Data stan gagal disimpan.');
+                    const publicResult = await pushCloudDoc('public_registrations', uid, { id: uid, ownerUid: uid, registrationType: 'stand', categoryGroup: category.categoryGroup, category: category.title, displayName: standName, school: val('cr-coordinator-school'), kecamatan: val('cr-kecamatan'), status: 'PENDING', createdAt }, false);
+                    if (!publicResult.ok) throw new Error(publicResult.error || 'Ringkasan pendaftaran stan gagal disimpan.');
+                    try { await window.fbSignOut(window.fbAuth); } catch(e) {}
+                    showToast('Pendaftaran stan berhasil. Akun menunggu verifikasi admin sebelum login dan mengunggah berkas.', 'success');
+                } else {
+                    if (!window.fbAuth.currentUser) await window.fbSignInAnonymously(window.fbAuth);
+                    const teamName = val('cr-team-name');
+                    const isSport = category.formType === 'sport';
+                    const school = isSport ? [...new Set(members.map(m => m.school).filter(Boolean))].join('; ') : val('cr-school');
+                    payload = {
+                        id: 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+                        registrationType: isSport ? 'sport' : 'performance',
+                        categoryGroup: category.categoryGroup, category: category.title,
+                        displayName: teamName, teamName, school, schoolList: school,
+                        kecamatan: val('cr-kecamatan'), coordinator: val('cr-coordinator'),
+                        phone: val('cr-phone'), members, status: 'TERDAFTAR', createdAt
+                    };
+                    const publicRecord = { id: payload.id, ownerUid: window.fbAuth.currentUser.uid, registrationType: payload.registrationType, categoryGroup: payload.categoryGroup, category: payload.category, displayName: payload.displayName, school: payload.school, kecamatan: payload.kecamatan, status: payload.status, createdAt: payload.createdAt };
+                    const result = await pushCloudDoc('event_registrations', payload.id, payload, false);
+                    if (!result.ok) throw new Error(result.error || 'Data pendaftaran belum tersimpan.');
+                    const publicResult = await pushCloudDoc('public_registrations', payload.id, publicRecord, false);
+                    if (!publicResult.ok) throw new Error(publicResult.error || 'Ringkasan pendaftaran belum tersimpan.');
+                    showToast('Tim / regu berhasil terdaftar.', 'success');
+                }
+                closeCompetitionModal();
+                renderCategories();
+                renderAdminRegistrations();
+                form.reset();
+            } catch (err) {
+                console.error('Competition registration error:', err);
+                statusEl.textContent = err?.message || 'Pendaftaran gagal disimpan.';
+                showToast(statusEl.textContent, 'error');
+            }
+        }
+
+        async function saveCategoryJuknis() {
+            if (!window.__hgnIsAdmin || window.fbAuth?.currentUser?.uid !== window.HGN_ADMIN_UID) {
+                showToast('Hanya admin yang dapat mengubah juknis.', 'error'); return;
+            }
+            const data = {
+                gtk: document.getElementById('juknis-gtk-url')?.value.trim() || '',
+                olahraga: document.getElementById('juknis-olahraga-url')?.value.trim() || '',
+                seni: document.getElementById('juknis-seni-url')?.value.trim() || '',
+                updatedAt: new Date().toISOString()
+            };
+            setStored('hgn_category_juknis', data);
+            const result = await pushCloudDoc('settings', 'category_juknis', data);
+            if (result.ok) { renderCategories(); showToast('Juknis tiap kategori berhasil disimpan.', 'success'); }
+            else showToast(result.error, 'error');
+        }
+
+        function startLiveClock() {
+            const update = () => {
+                const now = new Date();
+                const dateFmt = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                const timeFmt = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                const clock = document.getElementById('live-clock'), date = document.getElementById('live-date'), cal = document.getElementById('live-calendar');
+                if (clock) clock.textContent = timeFmt.format(now);
+                if (date) date.textContent = dateFmt.format(now);
+                if (cal) cal.textContent = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'long', year: 'numeric' }).format(now);
+            };
+            update(); setInterval(update, 1000);
+        }
+
+        function handleSelectCategory(catTitle) {
+            const category = getStored('hgn_categories', defaultCategories).map(normalizeCategory).find(c => c.title === catTitle);
+            if (!category) { showToast('Cabang lomba tidak ditemukan.', 'error'); return; }
             const user = getStored('hgn_session', null);
+            if (category.formType === 'sport' || category.formType === 'performance') {
+                showCompetitionRegistration(category.title);
+                return;
+            }
+            if (category.formType === 'stand' && !user) {
+                showCompetitionRegistration(category.title);
+                return;
+            }
+            localStorage.setItem('hgn_selected_category', category.title);
             navigateTo('portal');
             if (user && user.status === 'VERIFIED') {
                 const subCatEl = document.getElementById('sub-category');
-                if (subCatEl) subCatEl.value = catTitle;
+                if (subCatEl) subCatEl.value = category.title;
+                showToast('Cabang lomba dipilih. Silakan unggah tautan berkas jika sudah siap.', 'success');
+            } else if (user && user.status === 'PENDING') {
+                showToast('Akun masih menunggu verifikasi admin.', 'warning');
             } else {
-                showToast("Silakan login/daftar dahulu (Akun wajib terverifikasi admin).", "warning");
+                switchAuthMode('register');
+                showToast(category.formType === 'stand' ? 'Silakan daftar/login menggunakan akun stan.' : 'Silakan isi formulir pendaftaran. Akun harus diverifikasi admin sebelum mengirim berkas.', 'warning');
             }
         }
 
@@ -1771,19 +2244,22 @@ https://hgn.lampungbarat.go.id</textarea>
             const timeline = getStored('hgn_timeline', defaultTimeline);
             const container = document.getElementById('timeline-container');
             if (!container) return;
-            if (!timeline.length) {
-                container.innerHTML = '<div class="md:col-span-3 rounded-2xl bg-white border border-slate-200 p-8 text-center text-sm text-slate-500">Jadwal akan diumumkan oleh panitia.</div>';
-                return;
-            }
-            container.innerHTML = timeline.map(t => `
-                <div class="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm relative hover:border-amber-400 transition-all flex flex-col justify-between">
-                    <div>
+            const groups = [
+                { id: 'GTK', title: 'Timeline Kategori GTK' },
+                { id: 'OLAHRAGA', title: 'Timeline Kategori Olahraga' },
+                { id: 'SENI', title: 'Timeline Kategori Seni Pertunjukan' }
+            ];
+            container.className = 'grid grid-cols-1 gap-8';
+            container.innerHTML = groups.map(group => {
+                const items = timeline.filter(t => (t.categoryGroup || 'GTK') === group.id);
+                return `<section class="rounded-3xl border border-slate-200 bg-white p-5 sm:p-7 shadow-sm"><h3 class="text-xl font-extrabold text-navy-950 mb-4">${group.title}</h3>
+                    ${items.length ? `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">${items.map(t => `<div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-amber-400 transition-all">
                         <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold uppercase tracking-wider">${escapeHtml(t.stage)}</span>
-                        <h4 class="text-lg font-bold text-navy-950 mt-3 mb-1">${escapeHtml(t.title)}</h4>
+                        <h4 class="text-base font-bold text-navy-950 mt-3 mb-1">${escapeHtml(t.title)}</h4>
                         <div class="text-xs text-amber-600 font-bold mb-3 flex items-center gap-1.5"><i class="fa-regular fa-calendar-days"></i> ${escapeHtml(t.date)}</div>
-                        <p class="text-xs text-slate-600 leading-relaxed">${escapeHtml(t.desc)}</p>
-                    </div>
-                </div>`).join('');
+                        <p class="text-xs text-slate-600 leading-relaxed">${escapeHtml(t.desc)}</p></div>`).join('')}</div>` : '<p class="text-xs text-slate-500">Jadwal kategori ini akan diumumkan panitia.</p>'}
+                </section>`;
+            }).join('');
         }
 
         function renderAdminTimeline() {
@@ -1798,7 +2274,7 @@ https://hgn.lampungbarat.go.id</textarea>
             }
             list.innerHTML = timeline.map((t, i) => `
                 <article class="rounded-xl border border-slate-700 bg-navy-900 p-4">
-                    <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span class="text-[10px] font-extrabold tracking-wider text-teal-300">${escapeHtml(t.stage)}</span><h5 class="text-sm font-extrabold text-white mt-1">${escapeHtml(t.title)}</h5><p class="text-xs font-bold text-gold-300 mt-2"><i class="fa-regular fa-calendar mr-1"></i>${escapeHtml(t.date)}</p><p class="text-xs text-slate-400 mt-2 leading-relaxed">${escapeHtml(t.desc)}</p></div><span class="text-xs text-slate-500">${i+1}</span></div>
+                    <div class="flex items-start justify-between gap-3"><div class="min-w-0"><span class="text-[10px] font-extrabold tracking-wider text-teal-300">${escapeHtml(categoryGroupLabel(t.categoryGroup || "GTK"))} · ${escapeHtml(t.stage)}</span><h5 class="text-sm font-extrabold text-white mt-1">${escapeHtml(t.title)}</h5><p class="text-xs font-bold text-gold-300 mt-2"><i class="fa-regular fa-calendar mr-1"></i>${escapeHtml(t.date)}</p><p class="text-xs text-slate-400 mt-2 leading-relaxed">${escapeHtml(t.desc)}</p></div><span class="text-xs text-slate-500">${i+1}</span></div>
                     <div class="flex flex-wrap gap-2 mt-4"><button type="button" onclick="editTimelineStage(${i})" class="hgn-btn-secondary"><i class="fa-solid fa-pen mr-1"></i>Edit</button><button type="button" onclick="moveTimelineStage(${i},-1)" ${i===0?'disabled':''} class="hgn-btn-secondary" aria-label="Naikkan urutan"><i class="fa-solid fa-arrow-up"></i></button><button type="button" onclick="moveTimelineStage(${i},1)" ${i===timeline.length-1?'disabled':''} class="hgn-btn-secondary" aria-label="Turunkan urutan"><i class="fa-solid fa-arrow-down"></i></button><button type="button" onclick="deleteTimelineStage(${i})" class="hgn-btn-danger"><i class="fa-solid fa-trash mr-1"></i>Hapus</button></div>
                 </article>`).join('');
         }
@@ -1819,6 +2295,7 @@ https://hgn.lampungbarat.go.id</textarea>
             const item = timeline[index];
             if (!item) return;
             document.getElementById('timeline-edit-index').value = String(index);
+            document.getElementById('timeline-group-input').value = item.categoryGroup || 'GTK';
             document.getElementById('timeline-stage-input').value = item.stage || '';
             document.getElementById('timeline-title-input').value = item.title || '';
             document.getElementById('timeline-date-input').value = item.date || '';
@@ -1843,6 +2320,7 @@ https://hgn.lampungbarat.go.id</textarea>
             const timeline = getStored('hgn_timeline', defaultTimeline);
             const indexValue = document.getElementById('timeline-edit-index').value;
             const item = {
+                categoryGroup: document.getElementById('timeline-group-input').value,
                 stage: document.getElementById('timeline-stage-input').value.trim(),
                 title: document.getElementById('timeline-title-input').value.trim(),
                 date: document.getElementById('timeline-date-input').value.trim(),
@@ -1941,6 +2419,8 @@ https://hgn.lampungbarat.go.id</textarea>
             const password = document.getElementById('reg-password').value;
             try {
                 const credential = await window.fbCreateUserWithEmailAndPassword(window.fbAuth, email, password);
+                const requestedCategory = localStorage.getItem('hgn_selected_category') || '';
+                const requestedCategoryDef = getStored('hgn_categories', defaultCategories).map(normalizeCategory).find(c => c.title === requestedCategory);
                 const newUser = {
                     id: credential.user.uid,
                     name: document.getElementById('reg-name').value.trim(),
@@ -1958,11 +2438,28 @@ https://hgn.lampungbarat.go.id</textarea>
                     phone: document.getElementById('reg-phone').value,
                     judulKarya: document.getElementById('reg-judul-karya').value,
                     email: email,
+                    competitionCategory: localStorage.getItem('hgn_selected_category') || '',
+                    categoryGroup: requestedCategoryDef?.categoryGroup || 'GTK',
+                    registrationType: 'gtk',
                     status: 'PENDING',
                     created_at: new Date().toISOString().split('T')[0]
                 };
                 const result = await pushCloudDoc('users', newUser.id, newUser, false);
                 if (!result.ok) throw new Error(result.error || 'Profil peserta belum tersimpan.');
+                const selectedCategory = localStorage.getItem('hgn_selected_category') || '';
+                if (selectedCategory) {
+                    const cat = getStored('hgn_categories', defaultCategories).map(normalizeCategory).find(c => c.title === selectedCategory);
+                    if (cat && ['gtk','stand'].includes(cat.formType)) {
+                        const categorySlug = cat.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0,40);
+                        const regId = 'gtk_' + newUser.id + '_' + categorySlug;
+                        const publicRecord = { id: regId, ownerUid: newUser.id, registrationType: cat.formType, categoryGroup: cat.categoryGroup, category: cat.title, displayName: newUser.name, school: newUser.school, kecamatan: newUser.kecamatan, status: 'PENDING', createdAt: new Date().toISOString() };
+                        const privateRecord = { ...publicRecord, userId: newUser.id, phone: newUser.phone, email: newUser.email };
+                        const privateSave = await pushCloudDoc('event_registrations', regId, privateRecord, false);
+                        const publicSave = await pushCloudDoc('public_registrations', regId, publicRecord, false);
+                        if (!privateSave.ok || !publicSave.ok) console.warn('GTK public registration summary did not save', privateSave.error || publicSave.error);
+                    }
+                }
+                localStorage.removeItem('hgn_selected_category');
                 setStored('hgn_session', null);
                 showToast('Pendaftaran berhasil dikirim. Akun menunggu verifikasi admin.', 'warning');
                 e.target.reset(); switchAuthMode('login');
@@ -2044,6 +2541,8 @@ https://hgn.lampungbarat.go.id</textarea>
                 dashboard.classList.remove('hidden');
                 document.getElementById('user-display-name').innerText = user.name;
                 document.getElementById('user-display-school').innerText = user.school;
+                const selectedCategory = localStorage.getItem('hgn_selected_category') || user.competitionCategory || '';
+                if (selectedCategory && document.getElementById('sub-category')) document.getElementById('sub-category').value = selectedCategory;
                 renderMySubmissions(user.id);
             } else {
                 authBox.classList.remove('hidden');
@@ -2051,7 +2550,7 @@ https://hgn.lampungbarat.go.id</textarea>
             }
         }
 
-        function handleUserSubmission(e) {
+        async function handleUserSubmission(e) {
             e.preventDefault();
             if (isRegistrationLocked()) {
                 showToast("Upload berkas telah ditutup oleh Panitia!", "error");
@@ -2070,19 +2569,56 @@ https://hgn.lampungbarat.go.id</textarea>
                 category: document.getElementById('sub-category').value,
                 title: document.getElementById('sub-title').value,
                 driveUrl: document.getElementById('sub-drive').value,
-                reviewStatus: 'BELUM_DINILAI'
+                reviewStatus: 'BELUM_DINILAI',
+                createdAt: new Date().toISOString()
             };
 
             subs.push(newSub);
             setStored('hgn_submissions', subs);
 
-            // Sync Material Submission to Cloud Database
-            pushCloudDoc('submissions', newSub.id, newSub);
-
+            // Sync berkas ke Firestore; local copy tetap dipertahankan jika jaringan terputus.
+            const result = await pushCloudDoc('submissions', newSub.id, newSub);
+            let branchResult = { ok: true };
+            if (result.ok) branchResult = await ensureGtkBranchRegistration(user, newSub.category);
             document.getElementById('submission-form').reset();
             renderMySubmissions(user.id);
-            showToast("Bahan berkas lomba berhasil dikirim!", "success");
+            if (result.ok && branchResult.ok) showToast("Bahan berkas lomba berhasil dikirim dan tersimpan online.", "success");
+            else if (result.ok) showToast("Berkas tersimpan, tetapi ringkasan pendaftaran cabang belum tersinkron: " + branchResult.error, "warning");
+            else showToast(result.error, "error");
             if (localStorage.getItem('hgn_admin_active') === 'true') renderAdminSubmissionsTable();
+        }
+
+        async function ensureGtkBranchRegistration(user, categoryTitle) {
+            if (!user || !categoryTitle || user.status !== 'VERIFIED') return { ok: true };
+            const category = getStored('hgn_categories', defaultCategories).map(normalizeCategory).find(c => c.title === categoryTitle);
+            if (!category || !['gtk','stand'].includes(category.formType)) return { ok: true };
+            if (user.registrationType === 'stand' && user.competitionCategory === categoryTitle) return { ok: true };
+            const existing = getStored('hgn_public_registrations', []).find(r => r.ownerUid === user.id && r.category === categoryTitle);
+            if (existing) return { ok: true };
+            const slug = categoryTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0,40);
+            const id = `gtk_${user.id}_${slug}`;
+            try {
+                const existingDoc = await window.fbGetDoc(window.fbDoc(window.fbDB, 'artifacts', window.fbAppId, 'public', 'data', 'event_registrations', id));
+                if (existingDoc.exists()) return { ok: true };
+            } catch (err) { console.warn('Check existing branch registration:', err?.code || err); }
+            const createdAt = new Date().toISOString();
+            const registrationType = category.formType;
+            const status = registrationType === 'stand' ? 'PENDING' : 'TERDAFTAR';
+            const privateRecord = {
+                id, userId: user.id, ownerUid: user.id, registrationType, categoryGroup: category.categoryGroup,
+                category: categoryTitle, displayName: user.name, school: user.school || '',
+                kecamatan: user.kecamatan || '', phone: user.phone || '', email: user.email || '',
+                status, createdAt
+            };
+            const publicRecord = {
+                id, ownerUid: user.id, registrationType, categoryGroup: category.categoryGroup,
+                category: categoryTitle, displayName: user.name, school: user.school || '',
+                kecamatan: user.kecamatan || '', status, createdAt
+            };
+            const privateSave = await pushCloudDoc('event_registrations', id, privateRecord, false);
+            if (!privateSave.ok) return privateSave;
+            const publicSave = await pushCloudDoc('public_registrations', id, publicRecord, false);
+            return publicSave;
         }
 
         function renderMySubmissions(userId) {
@@ -2166,7 +2702,7 @@ https://hgn.lampungbarat.go.id</textarea>
         }
 
         function switchAdminTab(tab) {
-            ['users', 'submissions', 'categories', 'timeline', 'editor', 'announcements', 'security', 'promotions'].forEach(t => {
+            ['users', 'submissions', 'registrations', 'categories', 'timeline', 'editor', 'announcements', 'security', 'promotions'].forEach(t => {
                 const tabEl = document.getElementById(`admin-tab-${t}`);
                 const btnEl = document.getElementById(`tab-btn-${t}`);
                 if (tabEl) tabEl.classList.add('hidden');
@@ -2178,6 +2714,119 @@ https://hgn.lampungbarat.go.id</textarea>
             if (activeBtn) activeBtn.className = "px-4 py-2.5 rounded-t-xl font-bold bg-gold-gradient text-navy-950 flex items-center gap-2 whitespace-nowrap shadow-md";
             if (tab === 'categories') renderAdminCategories();
             if (tab === 'timeline') renderAdminTimeline();
+            if (tab === 'registrations') renderAdminRegistrations();
+        }
+
+        function renderAdminRegistrations() {
+            const all = getStored('hgn_event_registrations', []);
+            const filter = document.getElementById('event-registration-filter');
+            const categories = getStored('hgn_categories', defaultCategories).map(normalizeCategory);
+            if (filter) {
+                const current = filter.value || 'ALL';
+                filter.innerHTML = '<option value="ALL">Semua Cabang</option>' + categories.map(c => `<option value="${escapeHtml(c.title)}">${escapeHtml(c.title)}</option>`).join('');
+                if ([...filter.options].some(o => o.value === current)) filter.value = current;
+            }
+            const selected = filter?.value || 'ALL';
+            const items = all.filter(r => selected === 'ALL' || r.category === selected)
+                .sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            const tbody = document.getElementById('event-registrations-tbody');
+            if (!tbody) return;
+            if (!items.length) {
+                tbody.innerHTML = '<tr><td colspan="10" class="p-5 text-center text-slate-400">Belum ada pendaftaran pada filter ini.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = items.map(r => {
+                const members = Array.isArray(r.members) ? r.members.map(m => `${m.name || ''}${m.school ? ' ('+m.school+')' : ''}`).join('; ') : '-';
+                const display = r.displayName || r.teamName || r.standName || r.name || '-';
+                return `<tr class="border-t border-slate-800 align-top">
+                    <td class="p-3 whitespace-nowrap">${escapeHtml(r.createdAt ? new Date(r.createdAt).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'}) : '-')}</td>
+                    <td class="p-3">${escapeHtml(categoryGroupLabel(r.categoryGroup || 'GTK'))}</td>
+                    <td class="p-3 text-teal-200 font-bold">${escapeHtml(r.category || '-')}</td>
+                    <td class="p-3 font-bold text-white">${escapeHtml(display)}</td>
+                    <td class="p-3">${escapeHtml(r.school || r.schoolList || '-')}</td>
+                    <td class="p-3">${escapeHtml(r.kecamatan || '-')}</td>
+                    <td class="p-3">${escapeHtml(r.coordinator || '-')}<br><span class="text-slate-400">${escapeHtml(r.phone || '')}</span></td>
+                    <td class="p-3 max-w-xs">${escapeHtml(members || '-')}</td>
+                    <td class="p-3"><select onchange="updateEventRegistrationStatus('${escapeHtml(r.id)}',this.value)" class="bg-navy-950 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-white"><option ${r.status==='PENDING'?'selected':''} value="PENDING">PENDING</option><option ${r.status==='TERDAFTAR'?'selected':''} value="TERDAFTAR">TERDAFTAR</option><option ${r.status==='VERIFIED'?'selected':''} value="VERIFIED">VERIFIED</option><option ${r.status==='DITERIMA'?'selected':''} value="DITERIMA">DITERIMA</option><option ${r.status==='PERLU_PERBAIKAN'?'selected':''} value="PERLU_PERBAIKAN">PERLU PERBAIKAN</option><option ${r.status==='DITOLAK'?'selected':''} value="DITOLAK">DITOLAK</option><option ${r.status==='REJECTED'?'selected':''} value="REJECTED">REJECTED</option></select></td>
+                    <td class="p-3"><button onclick="deleteEventRegistration('${escapeHtml(r.id)}')" class="rounded-lg bg-red-900/60 px-2 py-1 text-[10px] font-bold text-red-200"><i class="fa-solid fa-trash mr-1"></i>Hapus</button></td>
+                </tr>`;
+            }).join('');
+        }
+        async function updateEventRegistrationStatus(id, status) {
+            if (!window.__hgnIsAdmin) { showToast('Hanya admin yang dapat mengubah status.', 'error'); return; }
+            const regs = getStored('hgn_event_registrations', []);
+            const idx = regs.findIndex(r => r.id === id);
+            if (idx < 0) return;
+            regs[idx].status = status;
+            setStored('hgn_event_registrations', regs);
+            if (regs[idx].registrationType === 'stand' && regs[idx].userId && ['VERIFIED','REJECTED','DITOLAK'].includes(status)) {
+                const userStatus = status === 'DITOLAK' ? 'REJECTED' : status;
+                const users = getStored('hgn_users', []);
+                const userIndex = users.findIndex(u => u.id === regs[idx].userId);
+                if (userIndex >= 0) { users[userIndex].status = userStatus; setStored('hgn_users', users); }
+                await pushCloudDoc('users', regs[idx].userId, { status: userStatus });
+                renderAdminUsersTable();
+            }
+            const result = await pushCloudDoc('event_registrations', id, { status, updatedAt: new Date().toISOString() });
+            const publicResult = await pushCloudDoc('public_registrations', id, { status, updatedAt: new Date().toISOString() });
+            if (result.ok && publicResult.ok) { renderAdminRegistrations(); renderCategories(); showToast('Status pendaftaran diperbarui.', 'success'); }
+            else showToast(result.error, 'error');
+        }
+        async function deleteEventRegistration(id) {
+            if (!window.__hgnIsAdmin || !confirm('Hapus data pendaftaran terpilih? Pastikan ini benar-benar data yang ingin dihapus. Jika pendaftar stan, penghapusan ini tidak otomatis menghapus akun Firebase Authentication atau profil users.')) return;
+            const result = await deleteCloudDoc('event_registrations', id);
+            if (!result.ok) { showToast(result.error, 'error'); return; }
+            await deleteCloudDoc('public_registrations', id);
+            setStored('hgn_event_registrations', getStored('hgn_event_registrations', []).filter(r => r.id !== id));
+            setStored('hgn_public_registrations', getStored('hgn_public_registrations', []).filter(r => r.id !== id));
+            renderAdminRegistrations(); renderCategories(); showToast('Data pendaftaran dihapus.', 'success');
+        }
+        function exportEventRegistrationsCSV(category) {
+            const regs = getStored('hgn_event_registrations', [])
+                .filter(r => category === 'ALL' || r.category === category)
+                .sort((a,b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+            const users = getStored('hgn_users', []);
+            const subs = getStored('hgn_submissions', []);
+            const rowsData = regs.map(r => {
+                const user = users.find(u => u.id === (r.userId || r.ownerUid || r.id));
+                const sub = subs.find(s => s.userId === user?.id && (!category || category === 'ALL' || s.category === category));
+                return { ...r, email: r.email || user?.email || '', nip: user?.nip || '', title: sub?.title || '', driveUrl: sub?.driveUrl || '' };
+            });
+            const represented = new Set(regs.flatMap(r => [r.userId, r.ownerUid, r.id]).filter(Boolean));
+            // Sertakan akun GTK yang dibuat lewat formulir lama tetapi belum memiliki dokumen registrasi kategori.
+            if (category === 'ALL' || category) {
+                users.forEach(user => {
+                    if (represented.has(user.id)) return;
+                    const userSubs = subs.filter(s => s.userId === user.id && (category === 'ALL' || s.category === category));
+                    const userCategory = user.competitionCategory || userSubs[0]?.category || '';
+                    if (category !== 'ALL' && userCategory !== category) return;
+                    const profileRows = userSubs.length ? userSubs : [null];
+                    profileRows.forEach(sub => rowsData.push({
+                        id: user.id, registrationType: 'gtk-profile', categoryGroup: 'GTK',
+                        category: sub?.category || userCategory || 'Belum memilih cabang',
+                        displayName: user.name, school: user.school, kecamatan: user.kecamatan,
+                        coordinator: '', phone: user.phone, members: [], status: user.status || 'PENDING',
+                        createdAt: user.created_at || '', email: user.email, nip: user.nip,
+                        title: sub?.title || '', driveUrl: sub?.driveUrl || '', userId: user.id
+                    }));
+                });
+            }
+            rowsData.sort((a,b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+            const cols = [
+                ['Waktu Daftar',r=>r.createdAt],['Kategori',r=>categoryGroupLabel(r.categoryGroup || 'GTK')],
+                ['Cabang Lomba',r=>r.category],['Jenis Pendaftaran',r=>r.registrationType],
+                ['Nama Peserta/Tim/Stan',r=>r.displayName || r.teamName || r.standName || r.name],
+                ['Asal Sekolah',r=>r.school || r.schoolList],['Kecamatan',r=>r.kecamatan],
+                ['Email',r=>r.email],['NIP/NUPTK/KTA',r=>r.nip],['Koordinator',r=>r.coordinator],
+                ['Telepon/WA',r=>r.phone],['Anggota',r=>(r.members||[]).map(m=>`${m.name} - ${m.school}`).join('; ')],
+                ['Judul Karya',r=>r.title],['Link Berkas',r=>r.driveUrl],['Status',r=>r.status],['ID',r=>r.id]
+            ];
+            const cell = v => { let s=String(v ?? ''); if (/^[=+\-@]/.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"'; };
+            const csv = '\uFEFF' + [cols.map(c=>cell(c[0])).join(','), ...rowsData.map(r=>cols.map(c=>cell(c[1](r))).join(','))].join('\r\n');
+            const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob); const a=document.createElement('a');
+            a.href=url; a.download=`pendaftaran-${category==='ALL'?'semua-cabang':category.replace(/[^a-z0-9]+/gi,'-')}.csv`;
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
         }
 
         function renderAdminStats() {
@@ -2194,7 +2843,7 @@ https://hgn.lampungbarat.go.id</textarea>
             if (totalUsersEl) totalUsersEl.innerText = users.length;
             if (pendingUsersEl) pendingUsersEl.innerText = users.filter(u => u.status === 'PENDING').length;
             if (verifiedUsersEl) verifiedUsersEl.innerText = users.filter(u => u.status === 'VERIFIED').length;
-            if (totalSubsEl) totalSubsEl.innerText = subs.length;
+            if (totalSubsEl) totalSubsEl.innerText = subs.length + getStored('hgn_event_registrations', []).length;
             if (badgePendingEl) badgePendingEl.innerText = users.filter(u => u.status === 'PENDING').length;
             
             const lockStatEl = document.getElementById('stat-lock-status');
@@ -2255,6 +2904,11 @@ https://hgn.lampungbarat.go.id</textarea>
 
                 // Push Updated Status to Cloud Realtime DB
                 pushCloudDoc('users', userId, users[idx]);
+                const relatedRegs = getStored('hgn_event_registrations', []).filter(r => r.userId === userId || r.id === userId || r.ownerUid === userId);
+                relatedRegs.forEach(r => {
+                    pushCloudDoc('event_registrations', r.id, { status, updatedAt: new Date().toISOString() });
+                    pushCloudDoc('public_registrations', r.id, { status, updatedAt: new Date().toISOString() });
+                });
 
                 renderAdminUsersTable();
                 showToast(`Status user diperbarui ke ${status}`, "success");
@@ -2262,7 +2916,7 @@ https://hgn.lampungbarat.go.id</textarea>
         }
 
         function renderAdminSubmissionsTable() {
-            const subs = getStored('hgn_submissions', defaultSubmissions);
+            const subs = getStored('hgn_submissions', defaultSubmissions).slice().sort((a,b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
             const catFilter = document.getElementById('submission-filter-category').value;
             const search = document.getElementById('submission-search-input').value.toLowerCase();
 
